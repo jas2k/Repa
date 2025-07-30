@@ -86,40 +86,39 @@
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
 
-        // Максимально простая система без асинхронного определения
-        class TimeManager {
+        // Универсальная система нормализации времени
+        class UniversalTimeManager {
             constructor() {
-                // Сразу устанавливаем консервативное значение для высокочастотных мониторов
-                this.timeScale = 0.4; // Подходит для 120-165Hz мониторов
-                
-                // Попытка определить частоту через screen API (если доступно)
-                if (typeof screen !== 'undefined' && screen.width > 1920) {
-                    // Большие мониторы часто высокочастотные
-                    this.timeScale = 0.36; // Для 165Hz
-                } else if (typeof screen !== 'undefined' && screen.width > 1440) {
-                    this.timeScale = 0.4; // Для 144Hz
-                }
-                
-                // Дополнительная эвристика через userAgent
-                const ua = navigator.userAgent.toLowerCase();
-                if (ua.includes('windows') && !ua.includes('mobile')) {
-                    // Windows ПК часто имеют высокочастотные мониторы
-                    this.timeScale = 0.36;
-                }
-                
-                console.log(`TimeScale set to: ${this.timeScale} (no async detection)`);
+                this.lastTime = 0;
+                this.targetFPS = 60;
+                this.frameTime = 1000 / this.targetFPS;
+                this.timeScale = 1.0;
+                this.initialized = false;
             }
 
             update(currentTime) {
-                // Минимальная реализация
+                if (!this.initialized) {
+                    this.lastTime = currentTime;
+                    this.initialized = true;
+                    return 1.0;
+                }
+
+                const deltaTime = currentTime - this.lastTime;
+                this.lastTime = currentTime;
+
+                // Нормализуем к 60 FPS независимо от реальной частоты обновления
+                const normalizedDelta = deltaTime / this.frameTime;
+                
+                // Ограничиваем максимальный deltaTime для стабильности
+                return Math.min(normalizedDelta, 3.0);
             }
 
-            animate(speed) {
-                return speed * this.timeScale;
+            getDeltaMultiplier(currentTime) {
+                return this.update(currentTime);
             }
         }
 
-        const timeManager = new TimeManager();
+        const timeManager = new UniversalTimeManager();
 
         // Функция для определения типа устройства
         function isMobile() {
@@ -154,24 +153,23 @@
         let isTouching = false;
         let lastTouchTime = 0;
 
-        // Облака с одинаковой скоростью для всех устройств
+        // Облака
         let clouds = [];
         for (let i = 0; i < 8; i++) {
-            const baseSpeed = 0.5; // Одинаковая скорость для всех
             clouds.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * 150 + 20,
-                speed: baseSpeed + Math.random() * 0.6,
+                speed: 0.8 + Math.random() * 0.4, // Базовая скорость
                 size: 1 + Math.random() * 2
             });
         }
 
-        // Солнце - одинаковая скорость для всех устройств
+        // Солнце
         const sun = {
             x: canvas.width - 60,
             y: 80,
             rayFrame: 0,
-            raySpeed: 0.04 // Одинаковая скорость для всех
+            raySpeed: 0.06 // Базовая скорость анимации лучей
         };
 
         // Поверхность земли
@@ -205,7 +203,7 @@
             });
         }
 
-        // Дырки в земле
+        // Дырки в земле - исправлено позиционирование
         let holes = [];
 
         // Обновляем количество листьев
@@ -379,11 +377,10 @@
         }, { passive: false });
 
         function shoot() {
-            const baseSpeed = 18; // Одинаковая скорость для всех устройств
             const bullet = {
                 x: turnip.x,
                 y: turnip.y - 20,
-                speed: baseSpeed,
+                speed: 12, // Базовая скорость пули
                 angle: -Math.PI/2,
                 radius: 3,
                 trail: []
@@ -414,11 +411,10 @@
 
             const targetLeaf = availableLeaves[Math.floor(Math.random() * availableLeaves.length)];
 
-            const baseSpeed = 2.2; // Одинаковая скорость для всех устройств
             const bird = {
                 x: Math.random() * canvas.width,
                 y: -30,
-                speed: baseSpeed + Math.random() * 1.2,
+                speed: 1.8 + Math.random() * 0.8, // Базовая скорость птицы
                 wingFrame: Math.random() * 20,
                 state: 'flying',
                 targetLeaf: targetLeaf,
@@ -461,20 +457,19 @@
             });
         }
 
-        // Создание птиц с одинаковой частотой для всех устройств
-        const birdSpawnInterval = 500; // Одинаково для всех устройств
+        // Создание птиц с фиксированным интервалом
+        const birdSpawnInterval = 3000; // 3 секунды
         setInterval(createBird, birdSpawnInterval);
 
         function update(currentTime) {
-            timeManager.update(currentTime);
-            const animationSpeed = timeManager.animate(1);
+            const deltaMultiplier = timeManager.getDeltaMultiplier(currentTime);
             
             if (gameState.showStartButton) {
-                gameState.time += animationSpeed;
-                sun.rayFrame += sun.raySpeed * animationSpeed;
+                gameState.time += deltaMultiplier;
+                sun.rayFrame += sun.raySpeed * deltaMultiplier;
 
                 clouds.forEach(cloud => {
-                    cloud.x += cloud.speed * animationSpeed;
+                    cloud.x += cloud.speed * deltaMultiplier;
                     if (cloud.x > canvas.width + 40) {
                         cloud.x = -40;
                         cloud.y = Math.random() * 150 + 20;
@@ -483,7 +478,7 @@
 
                 gardenLeaves.forEach(leaf => {
                     if (leaf.exists) {
-                        leaf.windFrame += 0.05 * animationSpeed;
+                        leaf.windFrame += 0.08 * deltaMultiplier;
                     }
                 });
                 return;
@@ -491,22 +486,20 @@
 
             if (!gameState.gameRunning || gameState.isPaused) return;
 
-            gameState.time += animationSpeed;
-            sun.rayFrame += sun.raySpeed * animationSpeed;
+            gameState.time += deltaMultiplier;
+            sun.rayFrame += sun.raySpeed * deltaMultiplier;
 
-            // Автоматическая стрельба с одинаковой скоростью для всех устройств
+            // Автоматическая стрельба
             if (turnip.shootCooldown > 0) {
-                turnip.shootCooldown -= animationSpeed;
+                turnip.shootCooldown -= deltaMultiplier;
             } else {
                 shoot();
-                // Одинаковая скорость стрельбы для всех устройств
-                turnip.shootCooldown = 8;
+                turnip.shootCooldown = 15; // Интервал стрельбы в кадрах при 60 FPS
             }
 
-            // Движение репы с одинаковой скоростью для всех устройств
+            // Движение репы
             let moving = false;
-            const baseMoveSpeed = 12; // Одинаково для всех устройств
-            const moveSpeed = baseMoveSpeed * animationSpeed;
+            const moveSpeed = 8 * deltaMultiplier; // Базовая скорость движения
 
             if (keys['a'] || keys['ф']) {
                 turnip.x -= moveSpeed;
@@ -519,7 +512,7 @@
                 moving = true;
             }
 
-            // Прямое следование за курсором/пальцем
+            // Следование за касанием/курсором
             if (isTouching && gameState.gameRunning && !gameState.isPaused) {
                 const targetX = touchCurrentX;
                 const currentX = turnip.x;
@@ -532,11 +525,8 @@
                         turnip.direction = 1;
                     }
 
-                    // Одинаковая скорость следования для всех устройств
-                    const baseFollowSpeed = 0.6;
-                    const maxFollowSpeed = 25;
-                    const speed = Math.min(Math.abs(difference) * baseFollowSpeed, maxFollowSpeed) * animationSpeed;
-                    turnip.x += Math.sign(difference) * speed;
+                    const followSpeed = Math.min(Math.abs(difference) * 0.4, 15) * deltaMultiplier;
+                    turnip.x += Math.sign(difference) * followSpeed;
                     moving = true;
                 }
             }
@@ -544,7 +534,7 @@
             turnip.x = Math.max(30, Math.min(canvas.width - 30, turnip.x));
 
             if (moving) {
-                turnip.walkFrame += 0.3 * animationSpeed;
+                turnip.walkFrame += 0.4 * deltaMultiplier;
                 turnip.isWalking = true;
             } else {
                 turnip.isWalking = false;
@@ -552,26 +542,28 @@
                 turnip.direction = 0;
             }
 
+            // Облака
             clouds.forEach(cloud => {
-                cloud.x += cloud.speed * animationSpeed;
+                cloud.x += cloud.speed * deltaMultiplier;
                 if (cloud.x > canvas.width + 40) {
                     cloud.x = -40;
                     cloud.y = Math.random() * 150 + 20;
                 }
             });
 
+            // Листья
             gardenLeaves.forEach(leaf => {
                 if (leaf.exists) {
-                    leaf.windFrame += 0.05 * animationSpeed;
+                    leaf.windFrame += 0.08 * deltaMultiplier;
                 }
             });
 
-            // Пули с нормализованной скоростью
+            // Пули
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const bullet = bullets[i];
 
-                bullet.x += Math.cos(bullet.angle) * bullet.speed * animationSpeed;
-                bullet.y += Math.sin(bullet.angle) * bullet.speed * animationSpeed;
+                bullet.x += Math.cos(bullet.angle) * bullet.speed * deltaMultiplier;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed * deltaMultiplier;
 
                 if (bullet.x < 0 || bullet.x > canvas.width ||
                     bullet.y < 0 || bullet.y > canvas.height) {
@@ -579,10 +571,10 @@
                 }
             }
 
-            // Птицы с нормализованной скоростью
+            // Птицы
             for (let i = birds.length - 1; i >= 0; i--) {
                 const bird = birds[i];
-                bird.wingFrame += 0.8 * animationSpeed;
+                bird.wingFrame += 1.2 * deltaMultiplier;
 
                 switch (bird.state) {
                     case 'flying':
@@ -591,15 +583,15 @@
                         const distance = Math.sqrt(dx * dx + dy * dy);
 
                         if (distance > 15) {
-                            bird.x += (dx / distance) * bird.speed * animationSpeed;
-                            bird.y += (dy / distance) * bird.speed * animationSpeed;
+                            bird.x += (dx / distance) * bird.speed * deltaMultiplier;
+                            bird.y += (dy / distance) * bird.speed * deltaMultiplier;
                         } else {
                             bird.state = 'landing';
                         }
                         break;
 
                     case 'landing':
-                        bird.landingProgress += animationSpeed;
+                        bird.landingProgress += deltaMultiplier;
                         if (bird.landingProgress > 30) {
                             bird.state = 'taking';
                             bird.landingProgress = 0;
@@ -607,11 +599,12 @@
                         break;
 
                     case 'taking':
-                        bird.landingProgress += animationSpeed;
+                        bird.landingProgress += deltaMultiplier;
                         if (bird.landingProgress > 10) {
+                            // Создаем дырку в земле - исправлено позиционирование
                             holes.push({
                                 x: bird.targetLeaf.x,
-                                y: bird.targetLeaf.y
+                                y: groundLevel + 5 // Дырка находится В земле, а не НА земле
                             });
 
                             bird.targetLeaf.exists = false;
@@ -624,8 +617,7 @@
                         break;
 
                     case 'escaping':
-                        const escapeSpeed = 6; // Одинаково для всех устройств
-                        bird.y -= bird.speed * escapeSpeed * animationSpeed;
+                        bird.y -= bird.speed * 4 * deltaMultiplier; // Скорость побега
                         if (bird.y < -50) {
                             birds.splice(i, 1);
                             continue;
@@ -642,33 +634,35 @@
                 }
             }
 
+            // Падающие листья
             for (let i = fallingLeaves.length - 1; i >= 0; i--) {
                 const leaf = fallingLeaves[i];
-                leaf.x += leaf.vx * animationSpeed;
-                leaf.y += leaf.vy * animationSpeed;
-                leaf.rotation += leaf.rotSpeed * animationSpeed;
-                leaf.vy += 0.1 * animationSpeed;
-                leaf.life -= animationSpeed;
+                leaf.x += leaf.vx * deltaMultiplier;
+                leaf.y += leaf.vy * deltaMultiplier;
+                leaf.rotation += leaf.rotSpeed * deltaMultiplier;
+                leaf.vy += 0.15 * deltaMultiplier;
+                leaf.life -= deltaMultiplier;
 
                 if (leaf.life <= 0 || leaf.y > canvas.height) {
                     fallingLeaves.splice(i, 1);
                 }
             }
 
+            // Частицы
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
-                p.x += p.vx * animationSpeed;
-                p.y += p.vy * animationSpeed;
-                p.vx *= Math.pow(0.95, animationSpeed);
-                p.vy *= Math.pow(0.95, animationSpeed);
-                p.life -= animationSpeed;
+                p.x += p.vx * deltaMultiplier;
+                p.y += p.vy * deltaMultiplier;
+                p.vx *= Math.pow(0.95, deltaMultiplier);
+                p.vy *= Math.pow(0.95, deltaMultiplier);
+                p.life -= deltaMultiplier;
 
                 if (p.life <= 0) {
                     particles.splice(i, 1);
                 }
             }
 
-            // Проверка столкновений с вибрацией при попадании
+            // Проверка столкновений
             for (let i = bullets.length - 1; i >= 0; i--) {
                 for (let j = birds.length - 1; j >= 0; j--) {
                     const bullet = bullets[i];
@@ -681,7 +675,6 @@
                     );
 
                     if (distance < bullet.radius + 16) {
-                        // Вибрация при попадании (только на мобильных)
                         vibrate(50);
 
                         createExplosion(bird.x, bird.y, '#8B4513');
@@ -854,26 +847,26 @@
                 drawPixelRect(i, groundLevel - grassHeight - 3, 1, grassHeight);
             }
 
+            // Рисуем дырки в земле - исправлено
             holes.forEach(hole => {
-                ctx.fillStyle = '#8B4513';
-                drawPixelCircle(hole.x, hole.y - 6, 10);
-
+                // Основная дырка - темно-коричневая
                 ctx.fillStyle = '#2F1B14';
-                for (let dx = -8; dx <= 8; dx++) {
-                    for (let dy = -3; dy <= 8; dy++) {
-                        if (dx * dx + dy * dy <= 64 && hole.y + dy >= groundLevel) {
-                            drawPixelRect(hole.x + dx, hole.y + dy, 1, 1);
-                        }
-                    }
-                }
+                drawPixelCircle(hole.x, hole.y, 12);
 
+                // Внутренняя часть дырки - черная
                 ctx.fillStyle = '#1A1A1A';
-                for (let dx = -5; dx <= 5; dx++) {
-                    for (let dy = -2; dy <= 5; dy++) {
-                        if (dx * dx + dy * dy <= 25 && hole.y + dy >= groundLevel) {
-                            drawPixelRect(hole.x + dx, hole.y + dy, 1, 1);
-                        }
-                    }
+                drawPixelCircle(hole.x, hole.y, 8);
+
+                // Самый центр - совсем черный
+                ctx.fillStyle = '#000000';
+                drawPixelCircle(hole.x, hole.y, 4);
+
+                // Края дырки - немного светлее земли для контраста
+                ctx.fillStyle = '#A0522D';
+                for (let angle = 0; angle < Math.PI * 2; angle += 0.5) {
+                    const edgeX = hole.x + Math.cos(angle) * 13;
+                    const edgeY = hole.y + Math.sin(angle) * 13;
+                    drawPixelRect(edgeX, edgeY, 2, 2);
                 }
             });
         }

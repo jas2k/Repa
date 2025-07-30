@@ -92,8 +92,8 @@
                    window.innerWidth <= 768;
         }
 
-        // Одинаковая скорость игры для всех устройств
-        const GAME_SPEED_MULTIPLIER = 1.0;
+        // Ускоренная скорость игры для всех устройств
+        const GAME_SPEED_MULTIPLIER = 1.5;
 
         // Функция вибрации для мобильных устройств
         function vibrate(duration = 50) {
@@ -425,8 +425,8 @@
             });
         }
 
-        // Создание птиц с одинаковой частотой на всех устройствах
-        setInterval(createBird, 1200); // Ускорили птиц - теперь появляются каждые 1.2 секунды
+        // Создание птиц с ускоренной частотой
+        setInterval(createBird, 800); // Еще быстрее - каждые 0.8 секунды
 
         function update() {
             if (gameState.showStartButton) {
@@ -459,13 +459,13 @@
                 turnip.shootCooldown--;
             } else {
                 shoot();
-                // Ускоренная стрельба для всех устройств
-                turnip.shootCooldown = 20;
+                // Очень быстрая стрельба
+                turnip.shootCooldown = 15;
             }
 
-            // Движение репы с ускоренной скоростью
+            // Движение репы с очень быстрой скоростью
             let moving = false;
-            const moveSpeed = 4 * GAME_SPEED_MULTIPLIER;
+            const moveSpeed = 6 * GAME_SPEED_MULTIPLIER;
 
             if (keys['a'] || keys['ф']) {
                 turnip.x -= moveSpeed;
@@ -491,8 +491,8 @@
                         turnip.direction = 1;
                     }
 
-                    // Ускоренная скорость следования для всех устройств
-                    const speed = Math.min(Math.abs(difference) * 0.25, 10) * GAME_SPEED_MULTIPLIER;
+                    // Очень быстрая скорость следования 
+                    const speed = Math.min(Math.abs(difference) * 0.35, 15) * GAME_SPEED_MULTIPLIER;
                     turnip.x += Math.sign(difference) * speed;
                     moving = true;
                 }
@@ -523,12 +523,12 @@
                 }
             });
 
-            // Пули с ускоренной скоростью
+            // Пули с очень быстрой скоростью
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const bullet = bullets[i];
 
-                bullet.x += Math.cos(bullet.angle) * (bullet.speed * 1.2);
-                bullet.y += Math.sin(bullet.angle) * (bullet.speed * 1.2);
+                bullet.x += Math.cos(bullet.angle) * (bullet.speed * 1.8 * GAME_SPEED_MULTIPLIER);
+                bullet.y += Math.sin(bullet.angle) * (bullet.speed * 1.8 * GAME_SPEED_MULTIPLIER);
 
                 if (bullet.x < 0 || bullet.x > canvas.width ||
                     bullet.y < 0 || bullet.y > canvas.height) {
@@ -536,10 +536,10 @@
                 }
             }
 
-            // Птицы с ускоренной скоростью
+            // Птицы с очень быстрой скоростью
             for (let i = birds.length - 1; i >= 0; i--) {
                 const bird = birds[i];
-                bird.wingFrame += 0.5;
+                bird.wingFrame += 0.7 * GAME_SPEED_MULTIPLIER;
 
                 switch (bird.state) {
                     case 'flying':
@@ -548,8 +548,8 @@
                         const distance = Math.sqrt(dx * dx + dy * dy);
 
                         if (distance > 15) {
-                            bird.x += (dx / distance) * (bird.speed * 1.2);
-                            bird.y += (dy / distance) * (bird.speed * 1.2);
+                            bird.x += (dx / distance) * (bird.speed * 1.8 * GAME_SPEED_MULTIPLIER);
+                            bird.y += (dy / distance) * (bird.speed * 1.8 * GAME_SPEED_MULTIPLIER);
                         } else {
                             bird.state = 'landing';
                         }
@@ -581,7 +581,7 @@
                         break;
 
                     case 'escaping':
-                        bird.y -= bird.speed * 2.5;
+                        bird.y -= bird.speed * 3.5 * GAME_SPEED_MULTIPLIER;
                         if (bird.y < -50) {
                             birds.splice(i, 1);
                             continue;

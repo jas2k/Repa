@@ -32,30 +32,15 @@
             cursor: pointer;
         }
 
-        /* Для мобильных устройств - полный экран */
-        @media (max-width: 768px) {
-            #gameContainer {
-                width: 100vw;
-                height: 100vh;
-            }
-            #gameCanvas {
-                width: 100%;
-                height: 100%;
-                object-fit: fill;
-            }
+        /* Для всех устройств - одинаковое полноэкранное отображение */
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
         }
-
-        /* Для ПК и планшетов - точно такое же как на мобильных */
-        @media (min-width: 769px) {
-            #gameContainer {
-                width: 100vw;
-                height: 100vh;
-            }
-            #gameCanvas {
-                width: 100%;
-                height: 100%;
-                object-fit: fill;
-            }
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
         }
 
         #ui {
@@ -85,21 +70,9 @@
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
 
-        // Устанавливаем размеры канваса в зависимости от экрана
-        function resizeCanvas() {
-            if (isMobile()) {
-                canvas.width = 400;
-                canvas.height = 800;
-            } else {
-                // На ПК делаем канвас по размеру окна
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
-        }
-
-        // Вызываем при загрузке и изменении размера
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        // Фиксированные размеры канваса для всех устройств
+        canvas.width = 400;
+        canvas.height = 800;
 
         // Функция для определения типа устройства
         function isMobile() {
@@ -107,8 +80,8 @@
                    window.innerWidth <= 768;
         }
 
-        // Увеличенная скорость для мобильных устройств как на ПК
-        const GAME_SPEED_MULTIPLIER = isMobile() ? 1.5 : 1.0;
+        // Одинаковая скорость для всех устройств
+        const GAME_SPEED_MULTIPLIER = 1.0;
 
         // Функция вибрации для мобильных устройств
         function vibrate(duration = 50) {

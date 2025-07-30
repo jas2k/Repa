@@ -45,19 +45,21 @@
             }
         }
 
-        /* Для ПК и планшетов - фиксированный размер с границами */
         @media (min-width: 769px) {
-            #gameContainer {
-                border: 4px solid #4a4a4a;
-                border-radius: 8px;
-                width: 600px;
-                height: 800px;
-            }
-            #gameCanvas {
-                width: 100%;
-                height: 100%;
-            }
-        }
+    #gameContainer {
+        border: 4px solid #4a4a4a;
+        border-radius: 8px;
+        width: 100vw;
+        height: 100vh;
+        max-width: 600px;
+        max-height: 800px;
+    }
+    #gameCanvas {
+        width: 100%;
+        height: 100%;
+        object-fit: fill;
+    }
+}
 
         #ui {
             position: absolute;
@@ -88,6 +90,7 @@
 
         // Функция для определения типа устройства
         function isMobile() {
+            const GAME_SPEED_MULTIPLIER = 1.0; // Одинаковая скорость для всех устройств
             return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                    window.innerWidth <= 768;
         }
@@ -423,7 +426,7 @@
         }
 
         // Создание птиц с одинаковой частотой на всех устройствах
-        setInterval(createBird, 1500);
+        setInterval(createBird, Math.floor(1500 / GAME_SPEED_MULTIPLIER));
 
         function update() {
             if (gameState.showStartButton) {
@@ -462,7 +465,7 @@
 
             // Движение репы с одинаковой скоростью на всех устройствах
             let moving = false;
-            const moveSpeed = 3; // Фиксированная скорость для всех устройств
+            const moveSpeed = 3 * GAME_SPEED_MULTIPLIER;
 
             if (keys['a'] || keys['ф']) {
                 turnip.x -= moveSpeed;
@@ -489,7 +492,7 @@
                     }
 
                     // Одинаковая скорость следования для всех устройств
-                    const speed = Math.min(Math.abs(difference) * 0.2, 8);
+                    const speed = Math.min(Math.abs(difference) * 0.2, 8) * GAME_SPEED_MULTIPLIER;
                     turnip.x += Math.sign(difference) * speed;
                     moving = true;
                 }
@@ -524,8 +527,8 @@
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const bullet = bullets[i];
 
-                bullet.x += Math.cos(bullet.angle) * bullet.speed;
-                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+                bullet.x += Math.cos(bullet.angle) * (bullet.speed * GAME_SPEED_MULTIPLIER);
+                bullet.y += Math.sin(bullet.angle) * (bullet.speed * GAME_SPEED_MULTIPLIER);
 
                 if (bullet.x < 0 || bullet.x > canvas.width ||
                     bullet.y < 0 || bullet.y > canvas.height) {

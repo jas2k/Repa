@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Репа-Киборг: Защитник Огорода</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #101010;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            image-rendering: pixelated;
+        }
+
+        #gameContainer {
+            border: 4px solid #4a4a4a;
+            border-radius: 8px;
+            background: #1a1a1a;
+            position: relative;
+
+        }
+
+        #gameCanvas {
+            display: block;
+            image-rendering: pixelated;
+            cursor: pointer;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #FFB347;
+            font-size: 19px;
+            text-shadow: 2px 2px 0px #000;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            display: none;
+        }
+
+
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div id="ui">
+            <div>ЛИСТЬЯ: <span id="leaves">9</span></div>
+            <div>СЧЕТ: <span id="score">0</span></div>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+
+        const scoreElement = document.getElementById('score');
+        const leavesElement = document.getElementById('leaves');
+
+        let gameState = {
+            score: 0,
+            leavesLeft: 9, // 9 реп
+            gameRunning: false,
+            time: 0,
+            showMenu: false,
+            isPaused: false,
+            showStartButton: true
+        };
+
+        let mouseX = 0;
+        let mouseY = 0;
+
+        // Облака
+        let clouds = [];
+        for (let i = 0; i < 8; i++) {
+            clouds.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * 150 + 20,
+                speed: 0.2 + Math.random() * 0.3,
+                size: 1 + Math.random() * 2
+            });
+        }
+
+        // Солнце
+        const sun = {
+            x: canvas.width - 80,
+            y: 80,
+            rayFrame: 0
+        };
+
+        // Поверхность земли (уменьшенная высота в 1.2 раза)
+        const groundLevel = canvas.height - 83; // было 100, теперь ~83
+
+        // Репа-киборг с человеческим телом (увеличен в 1.5 раза)
+        const turnip = {
+            x: canvas.width / 2,
+            y: groundLevel - 60, // Увеличен
+            width: 36, // Увеличен в 1.5 раза
+            height: 60, // Увеличен в 1.5 раза
+            shootCooldown: 0,
+            walkFrame: 0,
+            isWalking: false,
+            direction: 0 // -1 влево, 1 вправо, 0 стоит
+        };
+
+        // Листья репы на поверхности (9 штук симметрично)
+        let gardenLeaves = [];
+        const centerX = canvas.width / 2;
+        const spacing = 40;
+        for (let i = 0; i < 9; i++) {
+            const offsetFromCenter = (i - 4) * spacing; // -4, -3, -2, -1, 0, 1, 2, 3, 4
+            gardenLeaves.push({
+                x: centerX + offsetFromCenter,
+                y: groundLevel, // На уровне земли
+                windFrame: Math.random() * 20,
+                exists: true,
+                beingTaken: false,
+                takenBy: null
+            });
+        }
+
+        // Дырки в земле (для украденных реп)
+        let holes = [];
+
+        // Обновляем количество листьев
+        gameState.leavesLeft = gardenLeaves.length;
+
+        let bullets = [];
+        let birds = [];
+        let particles = [];
+        let fallingLeaves = [];
+        let keys = {};
+
+        // События мыши
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            if (gameState.showStartButton) {
+                // Проверка клика по кнопке НАЧАТЬ ИГРУ (увеличенная область)
+                if (clickX >= 110 && clickX <= 290 && clickY >= 350 && clickY <= 390) {
+                    startNewGame();
+                }
+            } else if (gameState.gameRunning && !gameState.isPaused) {
+                // Проверка клика по кнопке ПАУЗА (только если игра не на паузе)
+                if (clickX >= 320 && clickX <= 390 && clickY >= 10 && clickY <= 35) {
+                    gameState.isPaused = true;
+                }
+            } else if (gameState.isPaused) {
+                // Проверка клика по тексту ПРОДОЛЖИТЬ в меню паузы
+                if (clickX >= 100 && clickX <= 300 && clickY >= 300 && clickY <= 340) {
+                    gameState.isPaused = false;
+                }
+            } else if (!gameState.gameRunning && !gameState.showStartButton) {
+                // Проверка клика по кнопке НАЧАТЬ СНОВА после проигрыша
+                if (clickX >= 120 && clickX <= 280 && clickY >= 450 && clickY <= 480) {
+                    startNewGame();
+                }
+            }
+        });
+
+        function startNewGame() {
+            gameState.showStartButton = false;
+            gameState.gameRunning = true;
+            gameState.isPaused = false;
+            gameState.score = 0;
+            gameState.leavesLeft = 9; // 9 реп
+            gameState.time = 0;
+
+            // Сброс позиции репы (увеличенной)
+            turnip.x = canvas.width / 2;
+            turnip.y = groundLevel - 60;
+            turnip.shootCooldown = 0;
+            turnip.walkFrame = 0;
+            turnip.isWalking = false;
+            turnip.direction = 0;
+
+            // Очистка массивов
+            bullets = [];
+            birds = [];
+            particles = [];
+            fallingLeaves = [];
+            holes = []; // Очищаем дырки
+
+            // Восстановление огорода (9 реп симметрично)
+            gardenLeaves = [];
+            const centerX = canvas.width / 2;
+            const spacing = 40;
+            for (let i = 0; i < 9; i++) {
+                const offsetFromCenter = (i - 4) * spacing;
+                gardenLeaves.push({
+                    x: centerX + offsetFromCenter,
+                    y: groundLevel,
+                    windFrame: Math.random() * 20,
+                    exists: true,
+                    beingTaken: false,
+                    takenBy: null
+                });
+            }
+
+            updateUI();
+        }
+
+        // События клавиатуры
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        function shoot() {
+            const bullet = {
+                x: turnip.x,
+                y: turnip.y - 20,
+                speed: 8,
+                angle: -Math.PI/2, // Всегда стреляет вверх
+                radius: 3,
+                trail: []
+            };
+            bullets.push(bullet);
+            createMuzzleFlash();
+        }
+
+        function createMuzzleFlash() {
+            for (let i = 0; i < 3; i++) {
+                particles.push({
+                    x: turnip.x,
+                    y: turnip.y - 20,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: -Math.random() * 3,
+                    life: 10,
+                    maxLife: 10,
+                    color: `hsl(${Math.random() * 60 + 20}, 100%, 60%)`
+                });
+            }
+        }
+
+        function createBird() {
+            if (!gameState.gameRunning || gameState.leavesLeft <= 0 || gameState.isPaused) return;
+
+            const availableLeaves = gardenLeaves.filter(leaf => leaf.exists && !leaf.beingTaken);
+            if (availableLeaves.length === 0) return;
+
+            const targetLeaf = availableLeaves[Math.floor(Math.random() * availableLeaves.length)];
+
+            const bird = {
+                x: Math.random() * canvas.width,
+                y: -30,
+                speed: 1 + Math.random(),
+                wingFrame: Math.random() * 20,
+                state: 'flying',
+                targetLeaf: targetLeaf,
+                landingProgress: 0,
+                hasLeaf: false,
+                stealWholeRoot: Math.random() < 0.3 // 30% шанс украсть всю репу
+            };
+
+            targetLeaf.beingTaken = true;
+            targetLeaf.takenBy = bird;
+
+            birds.push(bird);
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * (2 + Math.random() * 2),
+                    vy: Math.sin(angle) * (2 + Math.random() * 2),
+                    life: 15,
+                    maxLife: 15,
+                    color: color
+                });
+            }
+        }
+
+        function createFallingLeaf(x, y, isWholeRoot = false) {
+            fallingLeaves.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 2,
+                vy: Math.random() * 2 + 1,
+                rotation: 0,
+                rotSpeed: (Math.random() - 0.5) * 0.2,
+                life: 60,
+                isWholeRoot: isWholeRoot
+            });
+        }
+
+        setInterval(createBird, 1500); // Больше птиц (каждые 1.5 сек)
+
+        function update() {
+            if (gameState.showStartButton) {
+                // В режиме ожидания только анимируем фон
+                gameState.time++;
+                sun.rayFrame += 0.01;
+
+                // Обновляем облака
+                clouds.forEach(cloud => {
+                    cloud.x += cloud.speed;
+                    if (cloud.x > canvas.width + 40) {
+                        cloud.x = -40;
+                        cloud.y = Math.random() * 150 + 20;
+                    }
+                });
+
+                // Обновляем анимацию листьев от ветра
+                gardenLeaves.forEach(leaf => {
+                    if (leaf.exists) {
+                        leaf.windFrame += 0.05;
+                    }
+                });
+                return;
+            }
+
+            if (!gameState.gameRunning || gameState.isPaused) return;
+
+            gameState.time++;
+            sun.rayFrame += 0.01; // Замедлили солнце
+
+            // Автоматическая стрельба (реже)
+            if (turnip.shootCooldown > 0) {
+                turnip.shootCooldown--;
+            } else {
+                shoot();
+                turnip.shootCooldown = 25; // Стреляет реже
+            }
+
+            // Движение репы только A/D (влево/вправо)
+            let moving = false;
+            if (keys['a'] || keys['ф']) {
+                turnip.x -= 3;
+                turnip.direction = -1; // Влево
+                moving = true;
+            }
+            if (keys['d'] || keys['в']) {
+                turnip.x += 3;
+                turnip.direction = 1; // Вправо
+                moving = true;
+            }
+
+            // Ограничения движения только по горизонтали
+            turnip.x = Math.max(30, Math.min(canvas.width - 30, turnip.x));
+
+            // Анимация ходьбы
+            if (moving) {
+                turnip.walkFrame += 0.3;
+                turnip.isWalking = true;
+            } else {
+                turnip.isWalking = false;
+                turnip.walkFrame = 0;
+                turnip.direction = 0; // Стоит
+            }
+
+            // Обновляем облака
+            clouds.forEach(cloud => {
+                cloud.x += cloud.speed;
+                if (cloud.x > canvas.width + 40) {
+                    cloud.x = -40;
+                    cloud.y = Math.random() * 150 + 20;
+                }
+            });
+
+            // Обновляем анимацию листьев от ветра ТОЛЬКО анимация листьев
+            gardenLeaves.forEach(leaf => {
+                if (leaf.exists) {
+                    leaf.windFrame += 0.05; // Медленнее
+                }
+            });
+
+            // Обновляем пули
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+
+                if (bullet.x < 0 || bullet.x > canvas.width ||
+                    bullet.y < 0 || bullet.y > canvas.height) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Обновляем птиц
+            for (let i = birds.length - 1; i >= 0; i--) {
+                const bird = birds[i];
+                bird.wingFrame += 0.4;
+
+                switch (bird.state) {
+                    case 'flying':
+                        const dx = bird.targetLeaf.x - bird.x;
+                        const dy = bird.targetLeaf.y - bird.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance > 15) {
+                            bird.x += (dx / distance) * bird.speed;
+                            bird.y += (dy / distance) * bird.speed;
+                        } else {
+                            bird.state = 'landing';
+                        }
+                        break;
+
+                    case 'landing':
+                        bird.landingProgress++;
+                        if (bird.landingProgress > 30) {
+                            bird.state = 'taking';
+                            bird.landingProgress = 0;
+                        }
+                        break;
+
+                    case 'taking':
+                        bird.landingProgress++;
+                        if (bird.landingProgress > 10) { // Быстрее забирает репу
+                            // Создаем дырку на месте украденной репы
+                            holes.push({
+                                x: bird.targetLeaf.x,
+                                y: bird.targetLeaf.y
+                            });
+
+                            bird.targetLeaf.exists = false;
+                            bird.hasLeaf = true;
+                            bird.hasWholeRoot = true; // Всегда забирает всю репу
+                            bird.state = 'escaping';
+                            gameState.leavesLeft--;
+                            updateUI();
+                        }
+                        break;
+
+                    case 'escaping':
+                        bird.y -= bird.speed * 2;
+                        if (bird.y < -50) {
+                            birds.splice(i, 1);
+                            continue;
+                        }
+                        break;
+                }
+
+                if (bird.y > canvas.height + 50) {
+                    if (bird.targetLeaf) {
+                        bird.targetLeaf.beingTaken = false;
+                        bird.targetLeaf.takenBy = null;
+                    }
+                    birds.splice(i, 1);
+                }
+            }
+
+            // Обновляем падающие листья
+            for (let i = fallingLeaves.length - 1; i >= 0; i--) {
+                const leaf = fallingLeaves[i];
+                leaf.x += leaf.vx;
+                leaf.y += leaf.vy;
+                leaf.rotation += leaf.rotSpeed;
+                leaf.vy += 0.1;
+                leaf.life--;
+
+                if (leaf.life <= 0 || leaf.y > canvas.height) {
+                    fallingLeaves.splice(i, 1);
+                }
+            }
+
+            // Обновляем частицы
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= 0.95;
+                p.vy *= 0.95;
+                p.life--;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Проверка столкновений
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                for (let j = birds.length - 1; j >= 0; j--) {
+                    const bullet = bullets[i];
+                    const bird = birds[j];
+
+                    if (!bullet || !bird) continue;
+
+                    const distance = Math.sqrt(
+                        (bullet.x - bird.x) ** 2 + (bullet.y - bird.y) ** 2
+                    );
+
+                    if (distance < bullet.radius + 16) { // Увеличили хитбокс птицы в 2 раза
+                        createExplosion(bird.x, bird.y, '#8B4513');
+
+                        if (bird.hasLeaf && bird.hasWholeRoot) {
+                            // Репа падает на землю анимированно
+                            createFallingLeaf(bird.x, bird.y, true);
+                        }
+
+                        if (bird.targetLeaf) {
+                            bird.targetLeaf.beingTaken = false;
+                            bird.targetLeaf.takenBy = null;
+                        }
+
+                        gameState.score += 20;
+                        bullets.splice(i, 1);
+                        birds.splice(j, 1);
+                        updateUI();
+                        break;
+                    }
+                }
+            }
+
+            if (gameState.leavesLeft <= 0) {
+                gameState.gameRunning = false;
+            }
+        }
+
+        function drawPixelText(text, x, y, color = '#FFFFFF', size = 1) {
+            const charWidth = 6 * size;
+            const charHeight = 8 * size;
+
+            ctx.fillStyle = color;
+
+            // Простые пиксельные символы
+            const pixelChars = {
+                'А': [[0,1,1,1,0],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1]],
+                'Б': [[1,1,1,1,0],[1,0,0,0,1],[1,1,1,1,0],[1,0,0,0,1],[1,1,1,1,0]],
+                'В': [[1,1,1,1,0],[1,0,0,0,1],[1,1,1,1,0],[1,0,0,0,1],[1,1,1,1,0]],
+                'Г': [[1,1,1,1,1],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,0,0],[1,0,0,0,0]],
+                'Д': [[0,1,1,1,0],[0,1,0,1,0],[0,1,0,1,0],[1,1,0,1,1],[1,1,1,1,1]],
+                'Е': [[1,1,1,1,1],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,0],[1,1,1,1,1]],
+                'Ж': [[1,0,1,0,1],[1,0,1,0,1],[0,1,1,1,0],[1,0,1,0,1],[1,0,1,0,1]],
+                'З': [[1,1,1,1,0],[0,0,0,0,1],[0,1,1,1,0],[0,0,0,0,1],[1,1,1,1,0]],
+                'И': [[1,0,0,0,1],[1,0,0,1,1],[1,0,1,0,1],[1,1,0,0,1],[1,0,0,0,1]],
+                'К': [[1,0,0,1,0],[1,0,1,0,0],[1,1,0,0,0],[1,0,1,0,0],[1,0,0,1,0]],
+                'Л': [[0,1,1,1,1],[0,0,1,0,1],[0,0,1,0,1],[0,0,1,0,1],[1,0,1,0,1]],
+                'М': [[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+                'Н': [[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1]],
+                'О': [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+                'П': [[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+                'Р': [[1,1,1,1,0],[1,0,0,0,1],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0]],
+                'С': [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[1,0,0,0,1],[0,1,1,1,0]],
+                'Т': [[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]],
+                'У': [[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,0,1,0,0]],
+                'Ф': [[0,1,1,1,0],[1,0,1,0,1],[1,1,1,1,1],[1,0,1,0,1],[0,1,1,1,0]],
+                'Х': [[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,1,0,1,0],[1,0,0,0,1]],
+                'Ц': [[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,1,0]],
+                'Ч': [[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1]],
+                'Ш': [[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1]],
+                'Щ': [[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,0,0,1]],
+                'Ъ': [[1,1,0,0,0],[0,1,0,0,0],[0,1,1,1,0],[0,1,0,0,1],[0,1,1,1,0]],
+                'Ы': [[1,0,0,0,1],[1,0,1,0,1],[1,1,0,0,1],[1,0,1,0,1],[1,0,0,0,1]],
+                'Ь': [[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,1],[1,1,1,1,0]],
+                'Э': [[0,1,1,1,0],[1,0,0,0,1],[0,0,1,1,0],[1,0,0,0,1],[0,1,1,1,0]],
+                'Ю': [[1,0,1,1,0],[1,0,1,0,1],[1,1,1,0,1],[1,0,1,0,1],[1,0,1,1,0]],
+                'Я': [[0,1,1,1,1],[1,0,0,0,1],[0,1,1,1,1],[0,0,1,0,1],[0,0,0,0,1]],
+                ' ': [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+                '0': [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+                '1': [[0,0,1,0,0],[0,1,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,1,1,0]],
+                '2': [[0,1,1,1,0],[1,0,0,0,1],[0,0,1,1,0],[0,1,0,0,0],[1,1,1,1,1]],
+                '3': [[0,1,1,1,0],[1,0,0,0,1],[0,0,1,1,0],[1,0,0,0,1],[0,1,1,1,0]],
+                '4': [[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,1,0],[0,0,0,1,0]],
+                '5': [[1,1,1,1,1],[1,0,0,0,0],[1,1,1,1,0],[0,0,0,0,1],[1,1,1,1,0]],
+                '6': [[0,1,1,1,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,1],[0,1,1,1,0]],
+                '7': [[1,1,1,1,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[1,0,0,0,0]],
+                '8': [[0,1,1,1,0],[1,0,0,0,1],[0,1,1,1,0],[1,0,0,0,1],[0,1,1,1,0]],
+                '9': [[0,1,1,1,0],[1,0,0,0,1],[0,1,1,1,1],[0,0,0,0,1],[0,1,1,1,0]],
+                ':': [[0,0,0,0,0],[0,0,1,0,0],[0,0,0,0,0],[0,0,1,0,0],[0,0,0,0,0]]
+            };
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i].toUpperCase();
+                const pattern = pixelChars[char];
+                if (pattern) {
+                    for (let row = 0; row < 5; row++) {
+                        for (let col = 0; col < 5; col++) {
+                            if (pattern[row][col]) {
+                                drawPixelRect(x + i * charWidth + col * size, y + row * size, size, size);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawPauseButton() {
+            // Увеличен размер текста в 2 раза
+            drawPixelText('ПАУЗА', 320, 18, '#FFB347', 2);
+        }
+
+        function drawPauseScreen() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawPixelText('ПАУЗА', 150, 200, '#FFB347', 3);
+
+            // Кнопка ПРОДОЛЖИТЬ по центру
+            drawPixelText('ПРОДОЛЖИТЬ', 100, 310, '#FFB347', 2);
+        }
+
+        // Рисуем небо с облаками и солнцем
+        function drawSky() {
+            // Реалистичное небо
+            const gradient = ctx.createLinearGradient(0, 0, 0, groundLevel);
+            gradient.addColorStop(0, '#1E90FF');
+            gradient.addColorStop(0.4, '#6495ED');
+            gradient.addColorStop(0.8, '#87CEEB');
+            gradient.addColorStop(1, '#B0C4DE');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, groundLevel);
+
+            // Солнце с анимированными лучами
+            ctx.fillStyle = '#FFD700';
+            drawPixelCircle(sun.x, sun.y, 32);
+
+            // Лучи солнца
+            ctx.fillStyle = '#FFFF00';
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2 + sun.rayFrame;
+                const rayLength = 50 + Math.sin(sun.rayFrame * 3 + i) * 6;
+                const rayX = sun.x + Math.cos(angle) * rayLength;
+                const rayY = sun.y + Math.sin(angle) * rayLength;
+                drawPixelRect(rayX - 2, rayY - 2, 6, 6);
+            }
+
+            // Облака
+            clouds.forEach(cloud => {
+                ctx.fillStyle = 'white';
+                const size = cloud.size;
+
+                drawPixelRect(cloud.x - 10 * size, cloud.y, 20 * size, 8 * size);
+                drawPixelRect(cloud.x - 8 * size, cloud.y - 4 * size, 16 * size, 8 * size);
+                drawPixelRect(cloud.x - 6 * size, cloud.y - 6 * size, 12 * size, 6 * size);
+                drawPixelRect(cloud.x - 12 * size, cloud.y + 2 * size, 8 * size, 6 * size);
+                drawPixelRect(cloud.x + 4 * size, cloud.y + 2 * size, 8 * size, 6 * size);
+
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+                drawPixelRect(cloud.x - 8 * size, cloud.y + 6 * size, 16 * size, 2 * size);
+            });
+        }
+
+        function drawGround() {
+            // Земля с текстурой
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, groundLevel, canvas.width, canvas.height - groundLevel);
+
+            // Добавляем стабильную текстуру коричневой земли (без случайности)
+            ctx.fillStyle = '#A0522D';
+            for (let x = 0; x < canvas.width; x += 16) {
+                for (let y = groundLevel + 8; y < canvas.height; y += 16) {
+                    drawPixelRect(x + 2, y + 2, 3, 3);
+                    drawPixelRect(x + 8, y + 6, 2, 2);
+                }
+            }
+
+            // Более темные участки земли (стабильные)
+            ctx.fillStyle = '#654321';
+            for (let x = 5; x < canvas.width; x += 20) {
+                for (let y = groundLevel + 12; y < canvas.height; y += 20) {
+                    drawPixelRect(x, y, 4, 4);
+                    drawPixelRect(x + 10, y + 8, 2, 3);
+                }
+            }
+
+            // Сплошная трава
+            ctx.fillStyle = '#32CD32';
+            ctx.fillRect(0, groundLevel - 6, canvas.width, 6);
+
+            // Текстура травы
+            ctx.fillStyle = '#228B22';
+            for (let i = 0; i < canvas.width; i += 3) {
+                const grassHeight = 2 + Math.sin(i * 0.2) * 1;
+                drawPixelRect(i, groundLevel - grassHeight - 3, 1, grassHeight);
+            }
+
+            // Рисуем дырки от украденных реп (только в земле)
+            holes.forEach(hole => {
+                // Убираем траву вокруг дырки
+                ctx.fillStyle = '#8B4513';
+                drawPixelCircle(hole.x, hole.y - 6, 10);
+
+                // Темная дырка в земле (ограничена уровнем земли)
+                ctx.fillStyle = '#2F1B14';
+                for (let dx = -8; dx <= 8; dx++) {
+                    for (let dy = -3; dy <= 8; dy++) {
+                        if (dx * dx + dy * dy <= 64 && hole.y + dy >= groundLevel) { // только в земле
+                            drawPixelRect(hole.x + dx, hole.y + dy, 1, 1);
+                        }
+                    }
+                }
+
+                // Еще более темный центр (только в земле)
+                ctx.fillStyle = '#1A1A1A';
+                for (let dx = -5; dx <= 5; dx++) {
+                    for (let dy = -2; dy <= 5; dy++) {
+                        if (dx * dx + dy * dy <= 25 && hole.y + dy >= groundLevel) { // только в земле
+                            drawPixelRect(hole.x + dx, hole.y + dy, 1, 1);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Рисуем репу-киборга (увеличенную в 1.5 раза)
+        function drawTurnip() {
+            if (gameState.showStartButton) return; // Не показываем репу в начальном экране
+
+            ctx.save();
+            ctx.translate(turnip.x, turnip.y);
+
+            // Анимация ходьбы
+            if (turnip.isWalking) {
+                ctx.translate(0, Math.sin(turnip.walkFrame) * 1.5);
+            }
+
+            // Ноги с анимированной походкой (увеличены)
+            const legOffset = turnip.isWalking ? Math.sin(turnip.walkFrame) * 6 : 0;
+            const legOffset2 = turnip.isWalking ? Math.sin(turnip.walkFrame + Math.PI) * 6 : 0;
+
+            ctx.fillStyle = '#2F4F4F';
+            drawPixelRect(-9, 22 + legOffset, 8, 27);
+            drawPixelRect(3, 22 + legOffset2, 8, 27);
+
+            ctx.fillStyle = '#8B4513';
+            drawPixelRect(-12, 46 + legOffset, 14, 6);
+            drawPixelRect(0, 46 + legOffset2, 14, 6);
+
+            if (turnip.isWalking) {
+                ctx.translate(Math.sin(turnip.walkFrame * 0.5) * 1.5, 0);
+            }
+
+            // Торс с красной олимпийкой (увеличен)
+            ctx.fillStyle = '#FF0000'; // Красная олимпийка
+            drawPixelRect(-12, -8, 24, 30);
+
+            // Голова репы (увеличена)
+            ctx.fillStyle = '#FFB347';
+            drawPixelCircle(0, -22, 15);
+
+            // Листья на голове (в зависимости от направления движения)
+            ctx.fillStyle = '#32CD32';
+            const leafDirection = turnip.direction * 0.3; // Влияние направления движения
+            const baseTime = gameState.time * 0.03;
+
+            // Левый листок (изогнутый)
+            ctx.save();
+            ctx.translate(-12, -30);
+            ctx.rotate(Math.sin(baseTime) * 0.15 - 0.2 + leafDirection);
+            // Изогнутый листок
+            drawPixelRect(-3, -21, 6, 8);
+            drawPixelRect(-5, -15, 10, 6);
+            drawPixelRect(-4, -10, 8, 8);
+            drawPixelRect(-2, -4, 4, 6);
+            ctx.restore();
+
+            // Левый центральный листок
+            ctx.save();
+            ctx.translate(-6, -37);
+            ctx.rotate(Math.sin(baseTime + 0.5) * 0.1 - 0.1 + leafDirection);
+            drawPixelRect(-4, -24, 8, 10);
+            drawPixelRect(-6, -16, 12, 8);
+            drawPixelRect(-5, -10, 10, 8);
+            drawPixelRect(-3, -4, 6, 6);
+            ctx.restore();
+
+            // Центральный листок (большой)
+            ctx.save();
+            ctx.translate(0, -42);
+            ctx.rotate(Math.sin(baseTime + 1) * 0.08 + leafDirection * 0.5);
+            drawPixelRect(-6, -27, 12, 12);
+            drawPixelRect(-8, -18, 16, 10);
+            drawPixelRect(-7, -10, 14, 10);
+            drawPixelRect(-4, -2, 8, 6);
+            ctx.restore();
+
+            // Правый центральный листок
+            ctx.save();
+            ctx.translate(6, -37);
+            ctx.rotate(Math.sin(baseTime + 1.5) * 0.1 + 0.1 - leafDirection);
+            drawPixelRect(-4, -24, 8, 10);
+            drawPixelRect(-6, -16, 12, 8);
+            drawPixelRect(-5, -10, 10, 8);
+            drawPixelRect(-3, -4, 6, 6);
+            ctx.restore();
+
+            // Правый листок (изогнутый)
+            ctx.save();
+            ctx.translate(12, -30);
+            ctx.rotate(Math.sin(baseTime + 2) * 0.15 + 0.2 - leafDirection);
+            drawPixelRect(-3, -21, 6, 8);
+            drawPixelRect(-5, -15, 10, 6);
+            drawPixelRect(-4, -10, 8, 8);
+            drawPixelRect(-2, -4, 4, 6);
+            ctx.restore();
+
+            // Киборг-половина лица (увеличена и закругленная)
+            ctx.fillStyle = '#708090';
+            // Рисуем закругленную правую половину
+            for (let y = -30; y < -8; y++) {
+                for (let x = 0; x < 15; x++) {
+                    const centerY = -19; // центр головы по Y
+                    const distance = Math.sqrt(x * x + (y - centerY) * (y - centerY));
+                    if (distance <= 15) { // радиус головы
+                        drawPixelRect(x, y, 1, 1);
+                    }
+                }
+            }
+
+            // Красный глаз киборга (увеличен)
+            ctx.fillStyle = '#FF0000';
+            drawPixelRect(6, -27, 6, 6);
+            ctx.fillStyle = '#FFFF00';
+            drawPixelRect(7, -25, 3, 3);
+
+            // Обычный глаз (увеличен)
+            ctx.fillStyle = 'white';
+            drawPixelRect(-9, -27, 6, 6);
+            ctx.fillStyle = 'black';
+            drawPixelRect(-7, -25, 3, 3);
+
+            // Рот (увеличен)
+            ctx.fillStyle = 'black';
+            drawPixelRect(-6, -12, 6, 3);
+
+            // Левая рука без оружия (увеличена)
+            const armOffset = turnip.isWalking ? Math.sin(turnip.walkFrame) * 3 : 0;
+            ctx.fillStyle = '#FFB347';
+            drawPixelRect(-22, -3 + armOffset, 9, 18);
+            drawPixelRect(-25, 12 + armOffset, 6, 9);
+
+            // Правая рука с оружием (увеличена, направлена вверх)
+            ctx.fillStyle = '#FFB347';
+            drawPixelRect(15, -22, 9, 18);
+
+            // Оружие (увеличено, вертикально вверх)
+            ctx.fillStyle = '#2F4F4F';
+            drawPixelRect(19, -37, 6, 24);
+            ctx.fillStyle = '#696969';
+            drawPixelRect(21, -34, 3, 18);
+
+            // Вспышка при стрельбе (увеличена)
+            if (turnip.shootCooldown > 20) {
+                ctx.fillStyle = '#FFD700';
+                drawPixelRect(18, -40, 9, 4);
+            }
+
+            ctx.restore();
+        }
+
+        // Рисуем листья в огороде (круглые репы как на фото)
+        function drawGardenLeaves() {
+            gardenLeaves.forEach(leaf => {
+                if (leaf.exists) {
+                    const windSway = Math.sin(leaf.windFrame) * 0.5;
+
+                    ctx.save();
+                    ctx.translate(leaf.x, leaf.y);
+
+                    // Основное тело репы (круглое, желто-оранжевое как на фото)
+                    ctx.fillStyle = '#FFA726';
+                    drawPixelCircle(0, 0, 12);  // основная круглая репа
+
+                    // Градиент репы (более темные края)
+                    ctx.fillStyle = '#FF9800';
+                    drawPixelCircle(0, 0, 10);
+
+                    // Светлый центр
+                    ctx.fillStyle = '#FFB74D';
+                    drawPixelCircle(0, -2, 8);
+
+                    // Блик
+                    ctx.fillStyle = '#FFCC80';
+                    drawPixelRect(-3, -5, 4, 3);
+
+                    // Корень как на фото (тонкий, длинный, заостренный)
+                    ctx.fillStyle = '#E65100';
+                    // Основной корень - длинный и тонкий
+                    drawPixelRect(-1, 12, 3, 20);
+                    // Заострение корня
+                    drawPixelRect(0, 32, 1, 8);
+
+                    // Боковые корешки (тонкие и редкие)
+                    ctx.fillStyle = '#D84315';
+                    drawPixelRect(-2, 16, 1, 6);
+                    drawPixelRect(3, 18, 1, 4);
+                    drawPixelRect(-1, 24, 1, 3);
+                    drawPixelRect(2, 26, 1, 4);
+
+                    // Стебель (короткий и толстый)
+                    ctx.fillStyle = '#2E7D32';
+                    drawPixelRect(-2, -16, 4, 6);
+
+                    // Листья репы (пышные, как на фото)
+                    ctx.save();
+                    ctx.translate(windSway, 0);
+
+                    // Центральные большие листья
+                    ctx.fillStyle = '#4CAF50';
+                    drawPixelRect(-10, -25, 20, 8);  // основной лист
+                    drawPixelRect(-8, -30, 16, 6);   // верхний слой
+                    drawPixelRect(-12, -22, 24, 6);  // нижний слой
+
+                    // Боковые листья
+                    ctx.fillStyle = '#66BB6A';
+                    drawPixelRect(-15, -20, 8, 12);  // левый лист
+                    drawPixelRect(7, -20, 8, 12);    // правый лист
+                    drawPixelRect(-6, -32, 12, 4);   // верхний центральный
+
+                    // Прожилки листьев
+                    ctx.fillStyle = '#2E7D32';
+                    drawPixelRect(-1, -28, 2, 16);   // центральная прожилка
+                    drawPixelRect(-8, -24, 1, 8);    // левая прожилка
+                    drawPixelRect(7, -24, 1, 8);     // правая прожилка
+
+                    // Зубчатые края листьев
+                    ctx.fillStyle = '#4CAF50';
+                    for (let i = 0; i < 8; i++) {
+                        if (i % 2 === 0) {
+                            drawPixelRect(-10 + i * 3, -25 - (i % 3), 2, 2);
+                        }
+                    }
+
+                    ctx.restore();
+                    ctx.restore();
+                }
+            });
+        }
+
+        // Рисуем птиц (увеличенных в 2 раза)
+        function drawBirds() {
+            birds.forEach(bird => {
+                ctx.save();
+                ctx.translate(bird.x, bird.y);
+
+                // Тело птицы (увеличено в 2 раза)
+                ctx.fillStyle = '#8B4513';
+                drawPixelRect(-12, -4, 24, 8);
+                drawPixelRect(-16, -2, 8, 4);
+
+                // Крылья (увеличены в 2 раза)
+                const wingFlap = Math.sin(bird.wingFrame) * 8;
+                if (bird.state === 'flying' || bird.state === 'escaping') {
+                    ctx.fillStyle = '#654321';
+                    drawPixelRect(-8, -8 + wingFlap, 16, 4);
+                    drawPixelRect(-8, 4 - wingFlap, 16, 4);
+                }
+
+                // Хвост (увеличен в 2 раза)
+                ctx.fillStyle = '#654321';
+                drawPixelRect(12, -2, 8, 4);
+
+                // Клюв (увеличен в 2 раза)
+                ctx.fillStyle = '#FFA500';
+                drawPixelRect(-20, 0, 4, 2);
+
+                // Глаз (увеличен в 2 раза)
+                ctx.fillStyle = 'black';
+                drawPixelRect(-14, -2, 2, 2);
+
+                // Лапки (увеличены в 2 раза)
+                if (bird.state === 'landing' || bird.state === 'taking') {
+                    ctx.fillStyle = '#FFA500';
+                    drawPixelRect(-4, 6, 2, 6);
+                    drawPixelRect(2, 6, 2, 6);
+                }
+
+                // Если несет целую репу (такую же как на земле)
+                if (bird.hasLeaf && bird.hasWholeRoot) {
+                    // Рисуем точно такую же репу как на земле
+                    ctx.fillStyle = '#FFA726';
+                    drawPixelCircle(0, 16, 12);
+
+                    ctx.fillStyle = '#FF9800';
+                    drawPixelCircle(0, 16, 10);
+
+                    ctx.fillStyle = '#FFB74D';
+                    drawPixelCircle(0, 14, 8);
+
+                    ctx.fillStyle = '#FFCC80';
+                    drawPixelRect(-3, 11, 4, 3);
+
+                    // Листья
+                    ctx.fillStyle = '#4CAF50';
+                    drawPixelRect(-10, -1, 20, 8);
+                    drawPixelRect(-8, -6, 16, 6);
+                }
+
+                ctx.restore();
+            });
+        }
+
+        function drawFallingLeaves() {
+            fallingLeaves.forEach(leaf => {
+                ctx.save();
+                ctx.translate(leaf.x, leaf.y);
+                ctx.rotate(leaf.rotation);
+
+                const alpha = leaf.life / 60;
+
+                if (leaf.isWholeRoot) {
+                    // Падающая целая круглая репа (анимированно исчезает)
+                    ctx.fillStyle = `rgba(255, 179, 71, ${alpha})`;
+                    drawPixelCircle(0, 0, 5);
+                    ctx.fillStyle = `rgba(50, 205, 50, ${alpha})`;
+                    drawPixelRect(-6, -6, 12, 6);
+                }
+
+                ctx.restore();
+            });
+        }
+
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                ctx.fillStyle = '#FFD700';
+                drawPixelRect(bullet.x - 2, bullet.y - 2, 4, 4);
+            });
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                const alpha = p.life / p.maxLife;
+                ctx.fillStyle = p.color.replace(')', `, ${alpha})`).replace('hsl', 'hsla');
+                drawPixelRect(p.x - 1, p.y - 1, 2, 2);
+            });
+        }
+
+        function drawPixelRect(x, y, w, h) {
+            ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
+        }
+
+        function drawPixelCircle(x, y, radius) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    if (dx * dx + dy * dy <= radius * radius) {
+                        drawPixelRect(x + dx, y + dy, 1, 1);
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawSky();
+            drawGround();
+            drawGardenLeaves();
+            drawFallingLeaves();
+            drawParticles();
+            drawTurnip();
+            drawBullets();
+            drawBirds();
+            drawUI();
+
+            if (gameState.showStartButton) {
+                // Кнопка НАЧАТЬ ИГРУ (больше и по центру)
+                drawPixelText('НАЧАТЬ ИГРУ', 110, 360, '#FFB347', 2);
+                return;
+            }
+
+            // Кнопка паузы
+            if (gameState.gameRunning && !gameState.isPaused) {
+                drawPauseButton();
+            }
+
+            if (gameState.isPaused) {
+                drawPauseScreen();
+            }
+
+            if (!gameState.gameRunning && !gameState.showStartButton) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                drawPixelText('ОГОРОД РАЗГРАБЛЕН', 80, 280, '#FF0000', 2);
+                drawPixelText('СЧЕТ: ' + gameState.score, 120, 350, '#00FF41', 1);
+
+                drawPixelText('НАЧАТЬ СНОВА', 130, 460, '#FFB347', 1);
+            }
+        }
+
+        function updateUI() {
+            scoreElement.textContent = gameState.score;
+            leavesElement.textContent = gameState.leavesLeft;
+
+            // Скрываем HTML UI и рисуем пиксельный
+            document.getElementById('ui').style.display = 'none';
+        }
+
+        function drawUI() {
+            if (gameState.showStartButton) return;
+
+            // Рисуем пиксельный UI с увеличенным размером текста
+            drawPixelText('ЛИСТЬЯ: ' + gameState.leavesLeft, 10, 20, '#FFB347', 2);
+            drawPixelText('СЧЕТ: ' + gameState.score, 10, 50, '#FFB347', 2);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        updateUI();
+        gameLoop();
+    </script>
+</body>
+</html>

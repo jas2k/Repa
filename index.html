@@ -86,14 +86,82 @@
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
 
+        // Система управления временем для стабильной скорости на всех экранах
+        class TimeManager {
+            constructor() {
+                this.lastTime = 0;
+                this.deltaTime = 0;
+                this.targetFPS = 60;
+                this.targetFrameTime = 1000 / this.targetFPS;
+                this.timeScale = 1;
+                this.gameTime = 0;
+                
+                // Определяем частоту обновления экрана
+                this.detectRefreshRate();
+            }
+
+            detectRefreshRate() {
+                let frameCount = 0;
+                let startTime = performance.now();
+                
+                const measureFPS = () => {
+                    frameCount++;
+                    if (frameCount < 120) {
+                        requestAnimationFrame(measureFPS);
+                    } else {
+                        const endTime = performance.now();
+                        const measuredFPS = (frameCount * 1000) / (endTime - startTime);
+                        
+                        // Адаптируем скорость игры под частоту экрана
+                        if (measuredFPS > 90) {
+                            // 120Hz+ экраны
+                            this.timeScale = 60 / measuredFPS;
+                        } else if (measuredFPS > 75) {
+                            // 90Hz экраны  
+                            this.timeScale = 60 / measuredFPS;
+                        } else {
+                            // 60Hz и ниже
+                            this.timeScale = 1;
+                        }
+                        
+                        console.log(`Detected refresh rate: ${measuredFPS.toFixed(1)}Hz, time scale: ${this.timeScale.toFixed(3)}`);
+                    }
+                };
+                requestAnimationFrame(measureFPS);
+            }
+
+            update(currentTime) {
+                if (this.lastTime === 0) {
+                    this.lastTime = currentTime;
+                    return;
+                }
+
+                this.deltaTime = (currentTime - this.lastTime) * this.timeScale;
+                this.gameTime += this.deltaTime;
+                this.lastTime = currentTime;
+            }
+
+            getDeltaTime() {
+                return this.deltaTime;
+            }
+
+            getGameTime() {
+                return this.gameTime;
+            }
+
+            // Универсальная функция для анимаций, независимая от FPS
+            animate(speed) {
+                return this.deltaTime * speed / this.targetFrameTime;
+            }
+        }
+
+        const timeManager = new TimeManager();
+
         // Функция для определения типа устройства
         function isMobile() {
             return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                    window.innerWidth <= 768;
         }
-
-        // Ускоренная скорость игры для всех устройств
-        const GAME_SPEED_MULTIPLIER = 1.5;
 
         // Функция вибрации для мобильных устройств
         function vibrate(duration = 50) {
@@ -128,16 +196,17 @@
             clouds.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * 150 + 20,
-                speed: 0.2 + Math.random() * 0.3,
+                speed: 0.3 + Math.random() * 0.4, // Увеличена базовая скорость
                 size: 1 + Math.random() * 2
             });
         }
 
-        // Солнце
+        // Солнце - одинаковая скорость для всех устройств
         const sun = {
             x: canvas.width - 60,
             y: 80,
-            rayFrame: 0
+            rayFrame: 0,
+            raySpeed: 0.02 // Фиксированная скорость анимации лучей
         };
 
         // Поверхность земли
@@ -158,7 +227,7 @@
         // Листья репы на поверхности
         let gardenLeaves = [];
         const centerX = canvas.width / 2;
-        const spacing = 40; // Возвращаем оптимальное расстояние для 400px ширины
+        const spacing = 40;
         for (let i = 0; i < 9; i++) {
             const offsetFromCenter = (i - 4) * spacing;
             gardenLeaves.push({
@@ -238,7 +307,7 @@
 
             gardenLeaves = [];
             const centerX = canvas.width / 2;
-            const spacing = 40; // Соответствует начальным настройкам
+            const spacing = 40;
             for (let i = 0; i < 9; i++) {
                 const offsetFromCenter = (i - 4) * spacing;
                 gardenLeaves.push({
@@ -348,7 +417,7 @@
             const bullet = {
                 x: turnip.x,
                 y: turnip.y - 20,
-                speed: 8,
+                speed: 12, // Увеличена скорость пуль
                 angle: -Math.PI/2,
                 radius: 3,
                 trail: []
@@ -382,7 +451,7 @@
             const bird = {
                 x: Math.random() * canvas.width,
                 y: -30,
-                speed: 1 + Math.random(),
+                speed: 1.5 + Math.random() * 0.8, // Увеличена скорость птиц
                 wingFrame: Math.random() * 20,
                 state: 'flying',
                 targetLeaf: targetLeaf,
@@ -425,16 +494,20 @@
             });
         }
 
-        // Создание птиц с ускоренной частотой
-        setInterval(createBird, 800); // Еще быстрее - каждые 0.8 секунды
+        // Создание птиц с оптимизированной частотой
+        setInterval(createBird, 700);
 
-        function update() {
+        function update(currentTime) {
+            timeManager.update(currentTime);
+            const deltaTime = timeManager.getDeltaTime();
+            const animationSpeed = timeManager.animate(1);
+
             if (gameState.showStartButton) {
-                gameState.time++;
-                sun.rayFrame += 0.01;
+                gameState.time += animationSpeed;
+                sun.rayFrame += sun.raySpeed * animationSpeed;
 
                 clouds.forEach(cloud => {
-                    cloud.x += cloud.speed;
+                    cloud.x += cloud.speed * animationSpeed;
                     if (cloud.x > canvas.width + 40) {
                         cloud.x = -40;
                         cloud.y = Math.random() * 150 + 20;
@@ -443,7 +516,7 @@
 
                 gardenLeaves.forEach(leaf => {
                     if (leaf.exists) {
-                        leaf.windFrame += 0.05;
+                        leaf.windFrame += 0.05 * animationSpeed;
                     }
                 });
                 return;
@@ -451,21 +524,20 @@
 
             if (!gameState.gameRunning || gameState.isPaused) return;
 
-            gameState.time++;
-            sun.rayFrame += 0.01;
+            gameState.time += animationSpeed;
+            sun.rayFrame += sun.raySpeed * animationSpeed;
 
             // Автоматическая стрельба с адаптивной скоростью
             if (turnip.shootCooldown > 0) {
-                turnip.shootCooldown--;
+                turnip.shootCooldown -= animationSpeed;
             } else {
                 shoot();
-                // Очень быстрая стрельба
-                turnip.shootCooldown = 15;
+                turnip.shootCooldown = 12; // Быстрая стрельба
             }
 
-            // Движение репы с очень быстрой скоростью
+            // Движение репы с оптимизированной скоростью
             let moving = false;
-            const moveSpeed = 6 * GAME_SPEED_MULTIPLIER;
+            const moveSpeed = 8 * animationSpeed;
 
             if (keys['a'] || keys['ф']) {
                 turnip.x -= moveSpeed;
@@ -491,8 +563,7 @@
                         turnip.direction = 1;
                     }
 
-                    // Очень быстрая скорость следования 
-                    const speed = Math.min(Math.abs(difference) * 0.35, 15) * GAME_SPEED_MULTIPLIER;
+                    const speed = Math.min(Math.abs(difference) * 0.4, 18) * animationSpeed;
                     turnip.x += Math.sign(difference) * speed;
                     moving = true;
                 }
@@ -501,7 +572,7 @@
             turnip.x = Math.max(30, Math.min(canvas.width - 30, turnip.x));
 
             if (moving) {
-                turnip.walkFrame += 0.3;
+                turnip.walkFrame += 0.3 * animationSpeed;
                 turnip.isWalking = true;
             } else {
                 turnip.isWalking = false;
@@ -510,7 +581,7 @@
             }
 
             clouds.forEach(cloud => {
-                cloud.x += cloud.speed;
+                cloud.x += cloud.speed * animationSpeed;
                 if (cloud.x > canvas.width + 40) {
                     cloud.x = -40;
                     cloud.y = Math.random() * 150 + 20;
@@ -519,16 +590,16 @@
 
             gardenLeaves.forEach(leaf => {
                 if (leaf.exists) {
-                    leaf.windFrame += 0.05;
+                    leaf.windFrame += 0.05 * animationSpeed;
                 }
             });
 
-            // Пули с очень быстрой скоростью
+            // Пули с оптимизированной скоростью
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const bullet = bullets[i];
 
-                bullet.x += Math.cos(bullet.angle) * (bullet.speed * 1.8 * GAME_SPEED_MULTIPLIER);
-                bullet.y += Math.sin(bullet.angle) * (bullet.speed * 1.8 * GAME_SPEED_MULTIPLIER);
+                bullet.x += Math.cos(bullet.angle) * bullet.speed * animationSpeed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed * animationSpeed;
 
                 if (bullet.x < 0 || bullet.x > canvas.width ||
                     bullet.y < 0 || bullet.y > canvas.height) {
@@ -536,10 +607,10 @@
                 }
             }
 
-            // Птицы с очень быстрой скоростью
+            // Птицы с оптимизированной скоростью
             for (let i = birds.length - 1; i >= 0; i--) {
                 const bird = birds[i];
-                bird.wingFrame += 0.7 * GAME_SPEED_MULTIPLIER;
+                bird.wingFrame += 0.8 * animationSpeed;
 
                 switch (bird.state) {
                     case 'flying':
@@ -548,15 +619,15 @@
                         const distance = Math.sqrt(dx * dx + dy * dy);
 
                         if (distance > 15) {
-                            bird.x += (dx / distance) * (bird.speed * 1.8 * GAME_SPEED_MULTIPLIER);
-                            bird.y += (dy / distance) * (bird.speed * 1.8 * GAME_SPEED_MULTIPLIER);
+                            bird.x += (dx / distance) * bird.speed * animationSpeed;
+                            bird.y += (dy / distance) * bird.speed * animationSpeed;
                         } else {
                             bird.state = 'landing';
                         }
                         break;
 
                     case 'landing':
-                        bird.landingProgress++;
+                        bird.landingProgress += animationSpeed;
                         if (bird.landingProgress > 30) {
                             bird.state = 'taking';
                             bird.landingProgress = 0;
@@ -564,7 +635,7 @@
                         break;
 
                     case 'taking':
-                        bird.landingProgress++;
+                        bird.landingProgress += animationSpeed;
                         if (bird.landingProgress > 10) {
                             holes.push({
                                 x: bird.targetLeaf.x,
@@ -581,7 +652,7 @@
                         break;
 
                     case 'escaping':
-                        bird.y -= bird.speed * 3.5 * GAME_SPEED_MULTIPLIER;
+                        bird.y -= bird.speed * 4 * animationSpeed;
                         if (bird.y < -50) {
                             birds.splice(i, 1);
                             continue;
@@ -600,11 +671,11 @@
 
             for (let i = fallingLeaves.length - 1; i >= 0; i--) {
                 const leaf = fallingLeaves[i];
-                leaf.x += leaf.vx;
-                leaf.y += leaf.vy;
-                leaf.rotation += leaf.rotSpeed;
-                leaf.vy += 0.1;
-                leaf.life--;
+                leaf.x += leaf.vx * animationSpeed;
+                leaf.y += leaf.vy * animationSpeed;
+                leaf.rotation += leaf.rotSpeed * animationSpeed;
+                leaf.vy += 0.1 * animationSpeed;
+                leaf.life -= animationSpeed;
 
                 if (leaf.life <= 0 || leaf.y > canvas.height) {
                     fallingLeaves.splice(i, 1);
@@ -613,11 +684,11 @@
 
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vx *= 0.95;
-                p.vy *= 0.95;
-                p.life--;
+                p.x += p.vx * animationSpeed;
+                p.y += p.vy * animationSpeed;
+                p.vx *= Math.pow(0.95, animationSpeed);
+                p.vy *= Math.pow(0.95, animationSpeed);
+                p.life -= animationSpeed;
 
                 if (p.life <= 0) {
                     particles.splice(i, 1);
@@ -951,7 +1022,7 @@
             ctx.fillStyle = '#696969';
             drawPixelRect(21, -34, 3, 18);
 
-            if (turnip.shootCooldown > 20) {
+            if (turnip.shootCooldown > 8) {
                 ctx.fillStyle = '#FFD700';
                 drawPixelRect(18, -40, 9, 4);
             }
@@ -1174,14 +1245,14 @@
             drawPixelText('СЧЕТ: ' + gameState.score, 10, 50, '#FFB347', 2);
         }
 
-        function gameLoop() {
-            update();
+        function gameLoop(currentTime) {
+            update(currentTime);
             draw();
             requestAnimationFrame(gameLoop);
         }
 
         updateUI();
-        gameLoop();
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>

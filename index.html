@@ -1014,53 +1014,75 @@
                     ctx.save();
                     ctx.translate(leaf.x, leaf.y);
 
+                    // Корень репы - желто-оранжевый, каплевидной формы как на фото
+                    ctx.fillStyle = '#FFB347';
+                    // Основная форма корня - овальная с заострением внизу
+                    drawPixelCircle(0, -5, 14);
+                    drawPixelCircle(0, -8, 12);
+                    drawPixelCircle(0, -12, 10);
+                    
+                    // Заостренный кончик корня
                     ctx.fillStyle = '#FFA726';
-                    drawPixelCircle(0, 0, 12);
+                    drawPixelCircle(0, 2, 8);
+                    drawPixelCircle(0, 8, 5);
+                    drawPixelCircle(0, 12, 3);
+                    drawPixelCircle(0, 15, 1);
 
-                    ctx.fillStyle = '#FF9800';
-                    drawPixelCircle(0, 0, 10);
-
-                    ctx.fillStyle = '#FFB74D';
-                    drawPixelCircle(0, -2, 8);
-
+                    // Градиент на корне для объема
                     ctx.fillStyle = '#FFCC80';
-                    drawPixelRect(-3, -5, 4, 3);
+                    drawPixelCircle(-3, -8, 6);
+                    drawPixelCircle(-2, -5, 5);
 
-                    ctx.fillStyle = '#E65100';
-                    drawPixelRect(-1, 12, 3, 20);
-                    drawPixelRect(0, 32, 1, 8);
+                    // Тени для объема
+                    ctx.fillStyle = '#FF9800';
+                    drawPixelCircle(4, -5, 4);
+                    drawPixelCircle(3, 0, 3);
 
-                    ctx.fillStyle = '#D84315';
-                    drawPixelRect(-2, 16, 1, 6);
-                    drawPixelRect(3, 18, 1, 4);
-                    drawPixelRect(-1, 24, 1, 3);
-                    drawPixelRect(2, 26, 1, 4);
-
-                    ctx.fillStyle = '#2E7D32';
-                    drawPixelRect(-2, -16, 4, 6);
+                    // Горизонтальные линии на корне как на настоящей репе
+                    ctx.fillStyle = '#FF9800';
+                    drawPixelRect(-8, -2, 16, 1);
+                    drawPixelRect(-6, 3, 12, 1);
+                    drawPixelRect(-4, 7, 8, 1);
 
                     ctx.save();
                     ctx.translate(windSway, 0);
 
+                    // Листья - более реалистичные, как на фото
                     ctx.fillStyle = '#4CAF50';
-                    drawPixelRect(-10, -25, 20, 8);
-                    drawPixelRect(-8, -30, 16, 6);
-                    drawPixelRect(-12, -22, 24, 6);
+                    // Центральные большие листья
+                    drawPixelRect(-8, -35, 16, 12);
+                    drawPixelRect(-10, -30, 20, 8);
+                    drawPixelRect(-6, -40, 12, 8);
+                    
+                    // Боковые листья
+                    drawPixelRect(-15, -28, 12, 10);
+                    drawPixelRect(3, -28, 12, 10);
+                    drawPixelRect(-12, -22, 8, 8);
+                    drawPixelRect(4, -22, 8, 8);
 
+                    // Более светлые листья для объема
                     ctx.fillStyle = '#66BB6A';
-                    drawPixelRect(-15, -20, 8, 12);
-                    drawPixelRect(7, -20, 8, 12);
-                    drawPixelRect(-6, -32, 12, 4);
+                    drawPixelRect(-6, -38, 12, 6);
+                    drawPixelRect(-8, -32, 16, 4);
+                    drawPixelRect(-10, -26, 8, 6);
+                    drawPixelRect(2, -26, 8, 6);
 
-                    ctx.fillStyle = '#2E7D32';
-                    drawPixelRect(-1, -28, 2, 16);
-                    drawPixelRect(-8, -24, 1, 8);
-                    drawPixelRect(7, -24, 1, 8);
+                    // Прожилки на листьях
+                    ctx.fillStyle = '#388E3C';
+                    drawPixelRect(-1, -35, 2, 18);
+                    drawPixelRect(-6, -30, 1, 8);
+                    drawPixelRect(5, -30, 1, 8);
+                    drawPixelRect(-8, -25, 1, 6);
+                    drawPixelRect(7, -25, 1, 6);
 
+                    // Зубчатые края листьев как на настоящей репе
                     ctx.fillStyle = '#4CAF50';
                     for (let i = 0; i < 8; i++) {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const leafX = Math.cos(angle) * 12;
+                        const leafY = Math.sin(angle) * 6 - 30;
                         if (i % 2 === 0) {
-                            drawPixelRect(-10 + i * 3, -25 - (i % 3), 2, 2);
+                            drawPixelRect(leafX - 1, leafY, 3, 4);
                         }
                     }
 

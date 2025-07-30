@@ -86,70 +86,34 @@
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
 
-        // Система управления временем для стабильной скорости на всех экранах
+        // Максимально простая система без асинхронного определения
         class TimeManager {
             constructor() {
-                this.lastTime = 0;
-                this.deltaTime = 0;
-                this.targetFPS = 60;
-                this.targetFrameTime = 1000 / this.targetFPS;
-                this.timeScale = 0.36; // СРАЗУ устанавливаем для высокочастотных мониторов
-                this.gameTime = 0;
-                this.refreshRate = 165; // Предполагаем высокую частоту по умолчанию
-                this.detectionComplete = false;
+                // Сразу устанавливаем консервативное значение для высокочастотных мониторов
+                this.timeScale = 0.4; // Подходит для 120-165Hz мониторов
                 
-                // Немедленно начинаем определение частоты
-                this.detectRefreshRate();
-            }
-
-            detectRefreshRate() {
-                let frameCount = 0;
-                let frameTimestamps = [];
+                // Попытка определить частоту через screen API (если доступно)
+                if (typeof screen !== 'undefined' && screen.width > 1920) {
+                    // Большие мониторы часто высокочастотные
+                    this.timeScale = 0.36; // Для 165Hz
+                } else if (typeof screen !== 'undefined' && screen.width > 1440) {
+                    this.timeScale = 0.4; // Для 144Hz
+                }
                 
-                const measureFPS = (timestamp) => {
-                    frameTimestamps.push(timestamp);
-                    frameCount++;
-                    
-                    if (frameCount < 30) { // Еще быстрее - 30 кадров
-                        requestAnimationFrame(measureFPS);
-                    } else {
-                        // Вычисляем среднюю частоту кадров
-                        const totalTime = frameTimestamps[frameTimestamps.length - 1] - frameTimestamps[0];
-                        const avgFrameTime = totalTime / (frameTimestamps.length - 1);
-                        const measuredFPS = 1000 / avgFrameTime;
-                        
-                        this.refreshRate = Math.round(measuredFPS);
-                        
-                        // Адаптация под частоту экрана - нормализация к 60 FPS
-                        this.timeScale = 60 / this.refreshRate;
-                        this.detectionComplete = true;
-                        
-                        console.log(`Detected: ${this.refreshRate}Hz, time scale: ${this.timeScale.toFixed(3)}`);
-                    }
-                };
-                requestAnimationFrame(measureFPS);
+                // Дополнительная эвристика через userAgent
+                const ua = navigator.userAgent.toLowerCase();
+                if (ua.includes('windows') && !ua.includes('mobile')) {
+                    // Windows ПК часто имеют высокочастотные мониторы
+                    this.timeScale = 0.36;
+                }
+                
+                console.log(`TimeScale set to: ${this.timeScale} (no async detection)`);
             }
 
             update(currentTime) {
-                if (this.lastTime === 0) {
-                    this.lastTime = currentTime;
-                    return;
-                }
-
-                this.deltaTime = (currentTime - this.lastTime);
-                this.gameTime += this.deltaTime;
-                this.lastTime = currentTime;
+                // Минимальная реализация
             }
 
-            getDeltaTime() {
-                return this.deltaTime;
-            }
-
-            getGameTime() {
-                return this.gameTime;
-            }
-
-            // Функция для нормализации скорости под 60 FPS
             animate(speed) {
                 return speed * this.timeScale;
             }

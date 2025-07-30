@@ -108,7 +108,7 @@
 
                 // Нормализуем к 60 FPS независимо от реальной частоты обновления
                 const normalizedDelta = deltaTime / this.frameTime;
-                
+
                 // Ограничиваем максимальный deltaTime для стабильности
                 return Math.min(normalizedDelta, 3.0);
             }
@@ -229,7 +229,7 @@
 
         function handleClick(clickX, clickY) {
             if (gameState.showStartButton) {
-                if (clickX >= 125 && clickX <= 325 && clickY >= 500 && clickY <= 540) {
+                if (clickX >= 115 && clickX <= 335 && clickY >= 495 && clickY <= 545) {
                     startNewGame();
                 }
             } else if (gameState.gameRunning && !gameState.isPaused) {
@@ -411,11 +411,11 @@
 
             // Увеличиваем шанс создания нескольких птиц одновременно
             const birdsToCreate = Math.random() < 0.4 ? 2 : 1; // 40% шанс создать 2 птицы
-            
+
             for (let i = 0; i < birdsToCreate && availableLeaves.length > 0; i++) {
                 const remainingLeaves = gardenLeaves.filter(leaf => leaf.exists && !leaf.beingTaken);
                 if (remainingLeaves.length === 0) break;
-                
+
                 const targetLeaf = remainingLeaves[Math.floor(Math.random() * remainingLeaves.length)];
 
                 const bird = {
@@ -471,7 +471,7 @@
 
         function update(currentTime) {
             const deltaMultiplier = timeManager.getDeltaMultiplier(currentTime);
-            
+
             if (gameState.showStartButton) {
                 gameState.time += deltaMultiplier;
                 sun.rayFrame += sun.raySpeed * deltaMultiplier;
@@ -880,131 +880,160 @@
         }
 
         function drawTurnip() {
-            if (gameState.showStartButton) return;
+    if (gameState.showStartButton) return;
 
-            ctx.save();
-            ctx.translate(turnip.x, turnip.y);
+    ctx.save();
+    ctx.translate(turnip.x, turnip.y);
 
-            if (turnip.isWalking) {
-                ctx.translate(0, Math.sin(turnip.walkFrame) * 1.5);
-            }
+    if (turnip.isWalking) {
+        ctx.translate(0, Math.sin(turnip.walkFrame) * 1.5);
+    }
 
-            const legOffset = turnip.isWalking ? Math.sin(turnip.walkFrame) * 6 : 0;
-            const legOffset2 = turnip.isWalking ? Math.sin(turnip.walkFrame + Math.PI) * 6 : 0;
+    // Реалистичная анимация ходьбы - ноги двигаются вперед-назад, не отрываются
+const legSwing1 = turnip.isWalking ? Math.sin(turnip.walkFrame) * 4 : 0; // Левая нога
+const legSwing2 = turnip.isWalking ? Math.sin(turnip.walkFrame + Math.PI) * 4 : 0; // Правая нога
 
-            ctx.fillStyle = '#2F4F4F';
-            drawPixelRect(-9, 22 + legOffset, 8, 27);
-            drawPixelRect(3, 22 + legOffset2, 8, 27);
+// Ноги (штаны)
+ctx.fillStyle = '#2F4F4F';
+drawPixelRect(-9 + legSwing1, 22, 8, 27); // Левая нога качается вперед-назад
+drawPixelRect(3 + legSwing2, 22, 8, 27);  // Правая нога качается в противофазе
 
-            ctx.fillStyle = '#8B4513';
-            drawPixelRect(-12, 46 + legOffset, 14, 6);
-            drawPixelRect(0, 46 + legOffset2, 14, 6);
+// Ботинки - следуют за ногами
+ctx.fillStyle = '#8B4513';
+drawPixelRect(-12 + legSwing1, 46, 14, 6); // Левый ботинок
+drawPixelRect(0 + legSwing2, 46, 14, 6);   // Правый ботинок
 
-            if (turnip.isWalking) {
-                ctx.translate(Math.sin(turnip.walkFrame * 0.5) * 1.5, 0);
-            }
+    if (turnip.isWalking) {
+        ctx.translate(Math.sin(turnip.walkFrame * 0.5) * 1.5, 0);
+    }
 
-            ctx.fillStyle = '#FF0000';
-            drawPixelRect(-12, -8, 24, 30);
+    ctx.fillStyle = '#FF0000';
+    drawPixelRect(-12, -8, 24, 30);
 
-            ctx.fillStyle = '#FFB347';
-            drawPixelCircle(0, -22, 15);
+    ctx.fillStyle = '#FFB347';
+    drawPixelCircle(0, -22, 15);
 
-            ctx.fillStyle = '#32CD32';
-            const leafDirection = turnip.direction * 0.3;
-            const baseTime = gameState.time * 0.03;
+    // Листва репы на голове - как у садовых реп
+    ctx.fillStyle = '#4CAF50';
 
-            ctx.save();
-            ctx.translate(-12, -30);
-            ctx.rotate(Math.sin(baseTime) * 0.15 - 0.2 + leafDirection);
-            drawPixelRect(-3, -21, 6, 8);
-            drawPixelRect(-5, -15, 10, 6);
-            drawPixelRect(-4, -10, 8, 8);
-            drawPixelRect(-2, -4, 4, 6);
-            ctx.restore();
+    // Базовое время для анимации листьев
+    const leafTime = gameState.time * 0.03;
+    const leafDirection = turnip.direction * 0.3;
 
-            ctx.save();
-            ctx.translate(-6, -37);
-            ctx.rotate(Math.sin(baseTime + 0.5) * 0.1 - 0.1 + leafDirection);
-            drawPixelRect(-4, -24, 8, 10);
-            drawPixelRect(-6, -16, 12, 8);
-            drawPixelRect(-5, -10, 10, 8);
-            drawPixelRect(-3, -4, 6, 6);
-            ctx.restore();
+    // Центральные большие листья
+    ctx.save();
+    ctx.translate(-4, -35);
+    ctx.rotate(Math.sin(leafTime) * 0.1 + leafDirection);
+    drawPixelRect(-8, -20, 16, 12);
+    drawPixelRect(-10, -12, 20, 8);
+    ctx.restore();
 
-            ctx.save();
-            ctx.translate(0, -42);
-            ctx.rotate(Math.sin(baseTime + 1) * 0.08 + leafDirection * 0.5);
-            drawPixelRect(-6, -27, 12, 12);
-            drawPixelRect(-8, -18, 16, 10);
-            drawPixelRect(-7, -10, 14, 10);
-            drawPixelRect(-4, -2, 8, 6);
-            ctx.restore();
+    ctx.save();
+    ctx.translate(4, -35);
+    ctx.rotate(Math.sin(leafTime + 1) * 0.1 - leafDirection);
+    drawPixelRect(-8, -20, 16, 12);
+    drawPixelRect(-10, -12, 20, 8);
+    ctx.restore();
 
-            ctx.save();
-            ctx.translate(6, -37);
-            ctx.rotate(Math.sin(baseTime + 1.5) * 0.1 + 0.1 - leafDirection);
-            drawPixelRect(-4, -24, 8, 10);
-            drawPixelRect(-6, -16, 12, 8);
-            drawPixelRect(-5, -10, 10, 8);
-            drawPixelRect(-3, -4, 6, 6);
-            ctx.restore();
+    // Боковые листья
+    ctx.save();
+    ctx.translate(-12, -30);
+    ctx.rotate(Math.sin(leafTime + 0.5) * 0.15 - 0.2 + leafDirection);
+    drawPixelRect(-6, -15, 12, 10);
+    drawPixelRect(-4, -8, 8, 8);
+    ctx.restore();
 
-            ctx.save();
-            ctx.translate(12, -30);
-            ctx.rotate(Math.sin(baseTime + 2) * 0.15 + 0.2 - leafDirection);
-            drawPixelRect(-3, -21, 6, 8);
-            drawPixelRect(-5, -15, 10, 6);
-            drawPixelRect(-4, -10, 8, 8);
-            drawPixelRect(-2, -4, 4, 6);
-            ctx.restore();
+    ctx.save();
+    ctx.translate(12, -30);
+    ctx.rotate(Math.sin(leafTime + 1.5) * 0.15 + 0.2 - leafDirection);
+    drawPixelRect(-6, -15, 12, 10);
+    drawPixelRect(-4, -8, 8, 8);
+    ctx.restore();
 
-            ctx.fillStyle = '#708090';
-            for (let y = -30; y < -8; y++) {
-                for (let x = 0; x < 15; x++) {
-                    const centerY = -19;
-                    const distance = Math.sqrt(x * x + (y - centerY) * (y - centerY));
-                    if (distance <= 15) {
-                        drawPixelRect(x, y, 1, 1);
-                    }
-                }
-            }
+    // Более светлые листья для объема
+    ctx.fillStyle = '#66BB6A';
+    ctx.save();
+    ctx.translate(0, -32);
+    ctx.rotate(Math.sin(leafTime + 2) * 0.08 + leafDirection * 0.5);
+    drawPixelRect(-6, -15, 12, 6);
+    drawPixelRect(-8, -10, 16, 4);
+    ctx.restore();
 
-            ctx.fillStyle = '#FF0000';
-            drawPixelRect(6, -27, 6, 6);
-            ctx.fillStyle = '#FFFF00';
-            drawPixelRect(7, -25, 3, 3);
+    // Прожилки на листьях
+    ctx.fillStyle = '#388E3C';
+    ctx.save();
+    ctx.translate(-2, -30);
+    ctx.rotate(Math.sin(leafTime) * 0.1 + leafDirection);
+    drawPixelRect(0, -12, 1, 10);
+    drawPixelRect(-3, -8, 1, 6);
+    drawPixelRect(3, -8, 1, 6);
+    ctx.restore();
 
-            ctx.fillStyle = 'white';
-            drawPixelRect(-9, -27, 6, 6);
-            ctx.fillStyle = 'black';
-            drawPixelRect(-7, -25, 3, 3);
+    ctx.save();
+    ctx.translate(2, -30);
+    ctx.rotate(Math.sin(leafTime + 1) * 0.1 - leafDirection);
+    drawPixelRect(0, -12, 1, 10);
+    drawPixelRect(-3, -8, 1, 6);
+    drawPixelRect(3, -8, 1, 6);
+    ctx.restore();
 
-            ctx.fillStyle = 'black';
-            drawPixelRect(-6, -12, 6, 3);
-
-            const armOffset = turnip.isWalking ? Math.sin(turnip.walkFrame) * 3 : 0;
-            ctx.fillStyle = '#FFB347';
-            drawPixelRect(-22, -3 + armOffset, 9, 18);
-            drawPixelRect(-25, 12 + armOffset, 6, 9);
-
-            // Правая рука с пистолетом - прикреплена к телу
-            ctx.fillStyle = '#FFB347';
-            drawPixelRect(13, -3, 9, 18); // Плечо правой руки
-            drawPixelRect(15, -22, 9, 18); // Предплечье
-
-            ctx.fillStyle = '#2F4F4F';
-            drawPixelRect(19, -37, 6, 24);
-            ctx.fillStyle = '#696969';
-            drawPixelRect(21, -34, 3, 18);
-
-            if (turnip.shootCooldown > 5) {
-                ctx.fillStyle = '#FFD700';
-                drawPixelRect(18, -40, 9, 4);
-            }
-
-            ctx.restore();
+    // Зубчатые края листьев
+    ctx.fillStyle = '#4CAF50';
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + leafTime * 0.5;
+        const leafX = Math.cos(angle) * 8;
+        const leafY = Math.sin(angle) * 4 - 35;
+        if (i % 2 === 0) {
+            drawPixelRect(leafX - 1, leafY, 3, 4);
         }
+    }
+
+    ctx.fillStyle = '#708090';
+    for (let y = -30; y < -8; y++) {
+        for (let x = 0; x < 15; x++) {
+            const centerY = -19;
+            const distance = Math.sqrt(x * x + (y - centerY) * (y - centerY));
+            if (distance <= 15) {
+                drawPixelRect(x, y, 1, 1);
+            }
+        }
+    }
+
+    ctx.fillStyle = '#FF0000';
+    drawPixelRect(6, -27, 6, 6);
+    ctx.fillStyle = '#FFFF00';
+    drawPixelRect(7, -25, 3, 3);
+
+    ctx.fillStyle = 'white';
+    drawPixelRect(-9, -27, 6, 6);
+    ctx.fillStyle = 'black';
+    drawPixelRect(-7, -25, 3, 3);
+
+    ctx.fillStyle = 'black';
+    drawPixelRect(-6, -12, 6, 3);
+
+    const armOffset = turnip.isWalking ? Math.sin(turnip.walkFrame) * 3 : 0;
+    ctx.fillStyle = '#FFB347';
+    drawPixelRect(-22, -3 + armOffset, 9, 18);
+    drawPixelRect(-25, 12 + armOffset, 6, 9);
+
+    // Правая рука с пистолетом - прикреплена к телу
+    ctx.fillStyle = '#FFB347';
+    drawPixelRect(13, -3, 9, 18); // Плечо правой руки
+    drawPixelRect(15, -22, 9, 18); // Предплечье
+
+    ctx.fillStyle = '#2F4F4F';
+    drawPixelRect(19, -37, 6, 24);
+    ctx.fillStyle = '#696969';
+    drawPixelRect(21, -34, 3, 18);
+
+    if (turnip.shootCooldown > 5) {
+        ctx.fillStyle = '#FFD700';
+        drawPixelRect(18, -40, 9, 4);
+    }
+
+    ctx.restore();
+}
 
         function drawGardenLeaves() {
             gardenLeaves.forEach(leaf => {
@@ -1020,7 +1049,7 @@
                     drawPixelCircle(0, -5, 14);
                     drawPixelCircle(0, -8, 12);
                     drawPixelCircle(0, -12, 10);
-                    
+
                     // Заостренный кончик корня
                     ctx.fillStyle = '#FFA726';
                     drawPixelCircle(0, 2, 8);
@@ -1053,7 +1082,7 @@
                     drawPixelRect(-8, -35, 16, 12);
                     drawPixelRect(-10, -30, 20, 8);
                     drawPixelRect(-6, -40, 12, 8);
-                    
+
                     // Боковые листья
                     drawPixelRect(-15, -28, 12, 10);
                     drawPixelRect(3, -28, 12, 10);
@@ -1207,10 +1236,15 @@
             drawUI();
 
             if (gameState.showStartButton) {
-                drawPixelText('НАЧАТЬ ИГРУ', 125, 510, '#FFB347', 2);
-                drawPixelText('КАСАНИЕ ДЛЯ ДВИЖЕНИЯ', 75, 550, '#00FF41', 1);
-                return;
-            }
+    // Рисуем прозрачную матовую рамку для кнопки
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(115, 495, 220, 50);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillRect(117, 497, 216, 46);
+
+    drawPixelText('НАЧАТЬ ИГРУ', 125, 510, '#FFB347', 2);
+    return;
+}
 
             if (gameState.gameRunning && !gameState.isPaused) {
                 drawPauseButton();

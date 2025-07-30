@@ -45,11 +45,12 @@
             }
         }
 
-        /* Для ПК - полный экран как на мобильном */
+        /* Для ПК - суженое по вертикали */
         @media (min-width: 769px) {
             #gameContainer {
                 width: 100vw;
-                height: 100vh;
+                height: 70vh;
+                max-height: 600px;
             }
             #gameCanvas {
                 width: 100%;

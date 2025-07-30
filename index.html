@@ -378,8 +378,8 @@
 
         function shoot() {
             const bullet = {
-                x: turnip.x,
-                y: turnip.y - 20,
+                x: turnip.x + 22, // Пуля вылетает из пистолета (правая рука)
+                y: turnip.y - 35, // На уровне пистолета
                 speed: 12, // Базовая скорость пули
                 angle: -Math.PI/2,
                 radius: 3,
@@ -392,8 +392,8 @@
         function createMuzzleFlash() {
             for (let i = 0; i < 3; i++) {
                 particles.push({
-                    x: turnip.x,
-                    y: turnip.y - 20,
+                    x: turnip.x + 22, // Вспышка от пистолета
+                    y: turnip.y - 35,
                     vx: (Math.random() - 0.5) * 3,
                     vy: -Math.random() * 3,
                     life: 10,
@@ -409,24 +409,32 @@
             const availableLeaves = gardenLeaves.filter(leaf => leaf.exists && !leaf.beingTaken);
             if (availableLeaves.length === 0) return;
 
-            const targetLeaf = availableLeaves[Math.floor(Math.random() * availableLeaves.length)];
+            // Увеличиваем шанс создания нескольких птиц одновременно
+            const birdsToCreate = Math.random() < 0.4 ? 2 : 1; // 40% шанс создать 2 птицы
+            
+            for (let i = 0; i < birdsToCreate && availableLeaves.length > 0; i++) {
+                const remainingLeaves = gardenLeaves.filter(leaf => leaf.exists && !leaf.beingTaken);
+                if (remainingLeaves.length === 0) break;
+                
+                const targetLeaf = remainingLeaves[Math.floor(Math.random() * remainingLeaves.length)];
 
-            const bird = {
-                x: Math.random() * canvas.width,
-                y: -30,
-                speed: 1.8 + Math.random() * 0.8, // Базовая скорость птицы
-                wingFrame: Math.random() * 20,
-                state: 'flying',
-                targetLeaf: targetLeaf,
-                landingProgress: 0,
-                hasLeaf: false,
-                stealWholeRoot: Math.random() < 0.3
-            };
+                const bird = {
+                    x: Math.random() * canvas.width,
+                    y: -30,
+                    speed: (1.8 + Math.random() * 0.8) * 2.25, // Увеличена скорость в 2.25 раза (1.5 * 1.5)
+                    wingFrame: Math.random() * 20,
+                    state: 'flying',
+                    targetLeaf: targetLeaf,
+                    landingProgress: 0,
+                    hasLeaf: false,
+                    stealWholeRoot: Math.random() < 0.3
+                };
 
-            targetLeaf.beingTaken = true;
-            targetLeaf.takenBy = bird;
+                targetLeaf.beingTaken = true;
+                targetLeaf.takenBy = bird;
 
-            birds.push(bird);
+                birds.push(bird);
+            }
         }
 
         function createExplosion(x, y, color) {
@@ -457,8 +465,8 @@
             });
         }
 
-        // Создание птиц с фиксированным интервалом
-        const birdSpawnInterval = 3000; // 3 секунды
+        // Создание птиц с фиксированным интервалом - увеличено количество
+        const birdSpawnInterval = 1800; // Уменьшен интервал с 3000 до 1800ms для большего количества птиц
         setInterval(createBird, birdSpawnInterval);
 
         function update(currentTime) {
@@ -847,22 +855,22 @@
                 drawPixelRect(i, groundLevel - grassHeight - 3, 1, grassHeight);
             }
 
-            // Рисуем дырки в земле - исправлено
+            // Рисуем дырки в земле - исправлено на коричневые тона
             holes.forEach(hole => {
                 // Основная дырка - темно-коричневая
-                ctx.fillStyle = '#2F1B14';
+                ctx.fillStyle = '#5D4037';
                 drawPixelCircle(hole.x, hole.y, 12);
 
-                // Внутренняя часть дырки - черная
-                ctx.fillStyle = '#1A1A1A';
+                // Внутренняя часть дырки - более темная коричневая
+                ctx.fillStyle = '#3E2723';
                 drawPixelCircle(hole.x, hole.y, 8);
 
-                // Самый центр - совсем черный
-                ctx.fillStyle = '#000000';
+                // Самый центр - очень темная коричневая
+                ctx.fillStyle = '#2E1A14';
                 drawPixelCircle(hole.x, hole.y, 4);
 
-                // Края дырки - немного светлее земли для контраста
-                ctx.fillStyle = '#A0522D';
+                // Края дырки - светло-коричневые для контраста
+                ctx.fillStyle = '#8D6E63';
                 for (let angle = 0; angle < Math.PI * 2; angle += 0.5) {
                     const edgeX = hole.x + Math.cos(angle) * 13;
                     const edgeY = hole.y + Math.sin(angle) * 13;
@@ -980,8 +988,10 @@
             drawPixelRect(-22, -3 + armOffset, 9, 18);
             drawPixelRect(-25, 12 + armOffset, 6, 9);
 
+            // Правая рука с пистолетом - прикреплена к телу
             ctx.fillStyle = '#FFB347';
-            drawPixelRect(15, -22, 9, 18);
+            drawPixelRect(13, -3, 9, 18); // Плечо правой руки
+            drawPixelRect(15, -22, 9, 18); // Предплечье
 
             ctx.fillStyle = '#2F4F4F';
             drawPixelRect(19, -37, 6, 24);

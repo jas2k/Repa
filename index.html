@@ -80,8 +80,13 @@
                    window.innerWidth <= 768;
         }
 
-        // Одинаковая скорость для всех устройств
-        const GAME_SPEED_MULTIPLIER = 1.0;
+        // Оптимизация для высоких герц и одинаковая скорость
+        const TARGET_FPS = 60;
+        let lastTime = 0;
+        let deltaTime = 0;
+        const FRAME_TIME = 1000 / TARGET_FPS;
+        
+        const GAME_SPEED_MULTIPLIER = isMobile() ? 1.8 : 1.0; // Увеличиваем скорость на мобилке
 
         // Функция вибрации для мобильных устройств
         function vibrate(duration = 50) {
@@ -413,7 +418,7 @@
             });
         }
 
-        // Создание птиц с одинаковой частотой на всех устройствах
+        // Создание птиц с оптимизацией под высокие герцы
         setInterval(createBird, Math.floor(1500 / GAME_SPEED_MULTIPLIER));
 
         function update() {
@@ -442,12 +447,12 @@
             gameState.time++;
             sun.rayFrame += 0.01;
 
-            // Автоматическая стрельба с адаптивной скоростью
+            // Автоматическая стрельба с фиксированной скоростью
             if (turnip.shootCooldown > 0) {
                 turnip.shootCooldown--;
             } else {
                 shoot();
-                // Одинаковая скорость стрельбы для всех устройств
+                // Фиксированная скорость стрельбы с учетом FPS
                 turnip.shootCooldown = Math.floor(25 / GAME_SPEED_MULTIPLIER);
             }
 
@@ -1162,14 +1167,23 @@
             drawPixelText('СЧЕТ: ' + gameState.score, 10, 50, '#FFB347', 2);
         }
 
-        function gameLoop() {
-            update();
-            draw();
+        function gameLoop(currentTime) {
+            // Оптимизация для высоких герц экранов
+            if (!lastTime) lastTime = currentTime;
+            deltaTime = currentTime - lastTime;
+            
+            // Обновляем игру только при достижении целевого FPS
+            if (deltaTime >= FRAME_TIME) {
+                update();
+                draw();
+                lastTime = currentTime - (deltaTime % FRAME_TIME);
+            }
+            
             requestAnimationFrame(gameLoop);
         }
 
         updateUI();
-        gameLoop();
+        gameLoop(0);
     </script>
 </body>
 </html>

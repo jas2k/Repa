@@ -1,35 +1,47 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Репа-Киборг: Защитник Огорода</title>
     <style>
         body {
-            margin: 0;
-            padding: 0;
-            background: #101010;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: 'Courier New', monospace;
-            image-rendering: pixelated;
-        }
+    margin: 0;
+    padding: 0;
+    background: #101010;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Courier New', monospace;
+    image-rendering: pixelated;
+    touch-action: none; /* Отключаем стандартные жесты */
+    overflow: hidden; /* Убираем прокрутку */
+}
 
-        #gameContainer {
-            border: 4px solid #4a4a4a;
-            border-radius: 8px;
-            background: #1a1a1a;
-            position: relative;
+#gameContainer {
+    border: 4px solid #4a4a4a;
+    border-radius: 8px;
+    background: #1a1a1a;
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-width: 360px;
+    max-height: 640px;
+}
 
-        }
-
-        #gameCanvas {
-            display: block;
-            image-rendering: pixelated;
-            cursor: pointer;
-        }
+#gameCanvas {
+    display: block;
+    image-rendering: pixelated;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Сохраняем пропорции */
+}
 
         #ui {
             position: absolute;
@@ -48,7 +60,7 @@
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <canvas id="gameCanvas" width="360" height="640"></canvas>
         <div id="ui">
             <div>ЛИСТЬЯ: <span id="leaves">9</span></div>
             <div>СЧЕТ: <span id="score">0</span></div>
@@ -76,6 +88,10 @@
 
         let mouseX = 0;
         let mouseY = 0;
+        let touchStartX = 0;
+        let touchCurrentX = 0;
+        let isTouching = false;
+        let lastTouchTime = 0;
 
         // Облака
         let clouds = [];
@@ -140,32 +156,40 @@
 
         // События мыши
         canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
 
-            if (gameState.showStartButton) {
-                // Проверка клика по кнопке НАЧАТЬ ИГРУ (увеличенная область)
-                if (clickX >= 110 && clickX <= 290 && clickY >= 350 && clickY <= 390) {
-                    startNewGame();
-                }
-            } else if (gameState.gameRunning && !gameState.isPaused) {
-                // Проверка клика по кнопке ПАУЗА (только если игра не на паузе)
-                if (clickX >= 320 && clickX <= 390 && clickY >= 10 && clickY <= 35) {
-                    gameState.isPaused = true;
-                }
-            } else if (gameState.isPaused) {
-                // Проверка клика по тексту ПРОДОЛЖИТЬ в меню паузы
-                if (clickX >= 100 && clickX <= 300 && clickY >= 300 && clickY <= 340) {
-                    gameState.isPaused = false;
-                }
-            } else if (!gameState.gameRunning && !gameState.showStartButton) {
-                // Проверка клика по кнопке НАЧАТЬ СНОВА после проигрыша
-                if (clickX >= 120 && clickX <= 280 && clickY >= 450 && clickY <= 480) {
-                    startNewGame();
-                }
-            }
-        });
+    // Масштабируем координаты
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    handleClick(clickX * scaleX, clickY * scaleY);
+});
+
+function handleClick(clickX, clickY) {
+    if (gameState.showStartButton) {
+        // Проверка клика по кнопке НАЧАТЬ ИГРУ (увеличенная область)
+        if (clickX >= 110 && clickX <= 290 && clickY >= 350 && clickY <= 390) {
+            startNewGame();
+        }
+    } else if (gameState.gameRunning && !gameState.isPaused) {
+        // Проверка клика по кнопке ПАУЗА (только если игра не на паузе)
+        if (clickX >= 320 && clickX <= 390 && clickY >= 10 && clickY <= 35) {
+            gameState.isPaused = true;
+        }
+    } else if (gameState.isPaused) {
+        // Проверка клика по тексту ПРОДОЛЖИТЬ в меню паузы
+        if (clickX >= 100 && clickX <= 300 && clickY >= 300 && clickY <= 340) {
+            gameState.isPaused = false;
+        }
+    } else if (!gameState.gameRunning && !gameState.showStartButton) {
+        // Проверка клика по кнопке НАЧАТЬ СНОВА после проигрыша
+        if (clickX >= 120 && clickX <= 280 && clickY >= 450 && clickY <= 480) {
+            startNewGame();
+        }
+    }
+}
 
         function startNewGame() {
             gameState.showStartButton = false;
@@ -217,6 +241,95 @@
         document.addEventListener('keyup', (e) => {
             keys[e.key.toLowerCase()] = false;
         });
+
+        // Обработчики мыши для ПК
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    touchStartX = e.clientX - rect.left;
+    touchCurrentX = touchStartX;
+    isTouching = true;
+    lastTouchTime = Date.now();
+
+    // Масштабируем координаты под размер canvas
+    const scaleX = canvas.width / rect.width;
+    touchStartX *= scaleX;
+    touchCurrentX *= scaleX;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!isTouching) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    touchCurrentX = (e.clientX - rect.left) * scaleX;
+});
+
+canvas.addEventListener('mouseup', (e) => {
+    isTouching = false;
+
+    // Проверяем, был ли это просто клик (а не перетаскивание)
+    const touchDuration = Date.now() - lastTouchTime;
+    const touchDistance = Math.abs(touchCurrentX - touchStartX);
+
+    if (touchDuration < 300 && touchDistance < 20) {
+        // Это был клик, обрабатываем как обычно
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const clickX = touchStartX;
+        const clickY = (e.clientY - rect.top) * scaleY;
+
+        // Используем существующую логику обработки кликов
+        handleClick(clickX, clickY);
+    }
+});
+
+        // Обработчики касаний для мобильных устройств
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault(); // Предотвращаем стандартное поведение
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    touchStartX = touch.clientX - rect.left;
+    touchCurrentX = touchStartX;
+    isTouching = true;
+    lastTouchTime = Date.now();
+
+    // Масштабируем координаты под размер canvas
+    const scaleX = canvas.width / rect.width;
+    touchStartX *= scaleX;
+    touchCurrentX *= scaleX;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!isTouching) return;
+
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    touchCurrentX = (touch.clientX - rect.left) * scaleX;
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    isTouching = false;
+
+    // Проверяем, был ли это просто тап (а не свайп)
+    const touchDuration = Date.now() - lastTouchTime;
+    const touchDistance = Math.abs(touchCurrentX - touchStartX);
+
+    if (touchDuration < 300 && touchDistance < 20) {
+        // Это был тап, обрабатываем как клик
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const clickX = touchStartX;
+        const clickY = (e.changedTouches[0].clientY - rect.top) * scaleY;
+
+        // Используем существующую логику обработки кликов
+        handleClick(clickX, clickY);
+    }
+}, { passive: false });
 
         function shoot() {
             const bullet = {
@@ -338,18 +451,38 @@
                 turnip.shootCooldown = 25; // Стреляет реже
             }
 
-            // Движение репы только A/D (влево/вправо)
-            let moving = false;
-            if (keys['a'] || keys['ф']) {
-                turnip.x -= 3;
-                turnip.direction = -1; // Влево
-                moving = true;
-            }
-            if (keys['d'] || keys['в']) {
-                turnip.x += 3;
-                turnip.direction = 1; // Вправо
-                moving = true;
-            }
+            // Движение репы клавишами и касанием
+let moving = false;
+if (keys['a'] || keys['ф']) {
+    turnip.x -= 3;
+    turnip.direction = -1; // Влево
+    moving = true;
+}
+if (keys['d'] || keys['в']) {
+    turnip.x += 3;
+    turnip.direction = 1; // Вправо
+    moving = true;
+}
+
+// Прямое следование за курсором/пальцем
+if (isTouching && gameState.gameRunning && !gameState.isPaused) {
+    const targetX = touchCurrentX;
+    const currentX = turnip.x;
+    const difference = targetX - currentX;
+
+    if (Math.abs(difference) > 5) { // Небольшая мертвая зона чтобы не дрожал
+        if (difference < 0) {
+            turnip.direction = -1; // Влево
+        } else {
+            turnip.direction = 1; // Вправо
+        }
+
+        // Плавное движение к цели со скоростью пропорциональной расстоянию
+        const speed = Math.min(Math.abs(difference) * 0.2, 8);
+        turnip.x += Math.sign(difference) * speed;
+        moving = true;
+    }
+}
 
             // Ограничения движения только по горизонтали
             turnip.x = Math.max(30, Math.min(canvas.width - 30, turnip.x));
@@ -1096,6 +1229,15 @@
 
         function drawUI() {
             if (gameState.showStartButton) return;
+
+            if (gameState.showStartButton) {
+    // Кнопка НАЧАТЬ ИГРУ (больше и по центру)
+    drawPixelText('НАЧАТЬ ИГРУ', 110, 360, '#FFB347', 2);
+
+    // Подсказка для мобильных устройств
+    drawPixelText('КАСАНИЕ ДЛЯ ДВИЖЕНИЯ', 70, 400, '#00FF41', 1);
+    return;
+}
 
             // Рисуем пиксельный UI с увеличенным размером текста
             drawPixelText('ЛИСТЬЯ: ' + gameState.leavesLeft, 10, 20, '#FFB347', 2);

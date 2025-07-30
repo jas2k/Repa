@@ -74,7 +74,7 @@
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="600" height="800"></canvas>
+        <canvas id="gameCanvas" width="400" height="800"></canvas>
         <div id="ui">
             <div>ЛИСТЬЯ: <span id="leaves">9</span></div>
             <div>СЧЕТ: <span id="score">0</span></div>
@@ -88,7 +88,7 @@
 
         // Функция для определения типа устройства
         function isMobile() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                    window.innerWidth <= 768;
         }
 
@@ -132,7 +132,7 @@
 
         // Солнце
         const sun = {
-            x: canvas.width - 80,
+            x: canvas.width - 60,
             y: 80,
             rayFrame: 0
         };
@@ -155,7 +155,7 @@
         // Листья репы на поверхности
         let gardenLeaves = [];
         const centerX = canvas.width / 2;
-        const spacing = 60; // Увеличено для ширины 600px
+        const spacing = 40; // Возвращаем оптимальное расстояние для 400px ширины
         for (let i = 0; i < 9; i++) {
             const offsetFromCenter = (i - 4) * spacing;
             gardenLeaves.push({
@@ -194,19 +194,19 @@
 
         function handleClick(clickX, clickY) {
             if (gameState.showStartButton) {
-                if (clickX >= 200 && clickX <= 400 && clickY >= 500 && clickY <= 540) {
+                if (clickX >= 100 && clickX <= 300 && clickY >= 500 && clickY <= 540) {
                     startNewGame();
                 }
             } else if (gameState.gameRunning && !gameState.isPaused) {
-                if (clickX >= 520 && clickX <= 590 && clickY >= 10 && clickY <= 35) {
+                if (clickX >= 320 && clickX <= 390 && clickY >= 10 && clickY <= 35) {
                     gameState.isPaused = true;
                 }
             } else if (gameState.isPaused) {
-                if (clickX >= 220 && clickX <= 380 && clickY >= 400 && clickY <= 440) {
+                if (clickX >= 120 && clickX <= 280 && clickY >= 400 && clickY <= 440) {
                     gameState.isPaused = false;
                 }
             } else if (!gameState.gameRunning && !gameState.showStartButton) {
-                if (clickX >= 240 && clickX <= 360 && clickY >= 600 && clickY <= 630) {
+                if (clickX >= 140 && clickX <= 260 && clickY >= 600 && clickY <= 630) {
                     startNewGame();
                 }
             }
@@ -235,7 +235,7 @@
 
             gardenLeaves = [];
             const centerX = canvas.width / 2;
-            const spacing = 60; // Соответствует начальным настройкам
+            const spacing = 40; // Соответствует начальным настройкам
             for (let i = 0; i < 9; i++) {
                 const offsetFromCenter = (i - 4) * spacing;
                 gardenLeaves.push({
@@ -463,7 +463,7 @@
             // Движение репы с одинаковой скоростью на всех устройствах
             let moving = false;
             const moveSpeed = 3; // Фиксированная скорость для всех устройств
-            
+
             if (keys['a'] || keys['ф']) {
                 turnip.x -= moveSpeed;
                 turnip.direction = -1;
@@ -636,7 +636,7 @@
                     if (distance < bullet.radius + 16) {
                         // Вибрация при попадании (только на мобильных)
                         vibrate(50);
-                        
+
                         createExplosion(bird.x, bird.y, '#8B4513');
 
                         if (bird.hasLeaf && bird.hasWholeRoot) {
@@ -730,15 +730,15 @@
         }
 
         function drawPauseButton() {
-            drawPixelText('ПАУЗА', 520, 18, '#FFB347', 2);
+            drawPixelText('ПАУЗА', 320, 18, '#FFB347', 2);
         }
 
         function drawPauseScreen() {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            drawPixelText('ПАУЗА', 250, 300, '#FFB347', 3);
-            drawPixelText('ПРОДОЛЖИТЬ', 220, 410, '#FFB347', 2);
+            drawPixelText('ПАУЗА', 150, 300, '#FFB347', 3);
+            drawPixelText('ПРОДОЛЖИТЬ', 120, 410, '#FFB347', 2);
         }
 
         function drawSky() {
@@ -1135,8 +1135,8 @@
             drawUI();
 
             if (gameState.showStartButton) {
-                drawPixelText('НАЧАТЬ ИГРУ', 200, 510, '#FFB347', 2);
-                drawPixelText('КАСАНИЕ ДЛЯ ДВИЖЕНИЯ', 150, 550, '#00FF41', 1);
+                drawPixelText('НАЧАТЬ ИГРУ', 100, 510, '#FFB347', 2);
+                drawPixelText('КАСАНИЕ ДЛЯ ДВИЖЕНИЯ', 50, 550, '#00FF41', 1);
                 return;
             }
 
@@ -1152,9 +1152,9 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                drawPixelText('ОГОРОД РАЗГРАБЛЕН', 160, 450, '#FF0000', 2);
-                drawPixelText('СЧЕТ: ' + gameState.score, 240, 520, '#00FF41', 1);
-                drawPixelText('НАЧАТЬ СНОВА', 240, 610, '#FFB347', 1);
+                drawPixelText('ОГОРОД РАЗГРАБЛЕН', 60, 450, '#FF0000', 2);
+                drawPixelText('СЧЕТ: ' + gameState.score, 140, 520, '#00FF41', 1);
+                drawPixelText('НАЧАТЬ СНОВА', 140, 610, '#FFB347', 1);
             }
         }
 

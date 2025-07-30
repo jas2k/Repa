@@ -95,17 +95,37 @@
                 this.targetFrameTime = 1000 / this.targetFPS;
                 this.timeScale = 1;
                 this.gameTime = 0;
-                this.isPC = !isMobile();
                 this.refreshRate = 60;
                 
-                // НЕМЕДЛЕННО устанавливаем быструю скорость для ПК
-                if (this.isPC) {
-                    this.timeScale = 1.0; // Убираем все замедления для ПК!
-                } else {
-                    this.timeScale = 1.0; // И для мобильных тоже
-                }
+                // Определяем частоту обновления экрана
+                this.detectRefreshRate();
+            }
+
+            detectRefreshRate() {
+                let frameCount = 0;
+                let frameTimestamps = [];
                 
-                console.log(`Device: ${this.isPC ? 'PC' : 'Mobile'}, time scale: ${this.timeScale}`);
+                const measureFPS = (timestamp) => {
+                    frameTimestamps.push(timestamp);
+                    frameCount++;
+                    
+                    if (frameCount < 120) {
+                        requestAnimationFrame(measureFPS);
+                    } else {
+                        // Вычисляем среднюю частоту кадров
+                        const totalTime = frameTimestamps[frameTimestamps.length - 1] - frameTimestamps[0];
+                        const avgFrameTime = totalTime / (frameTimestamps.length - 1);
+                        const measuredFPS = 1000 / avgFrameTime;
+                        
+                        this.refreshRate = Math.round(measuredFPS);
+                        
+                        // Адаптация под частоту экрана - нормализация к 60 FPS
+                        this.timeScale = 60 / this.refreshRate;
+                        
+                        console.log(`Detected: ${this.refreshRate}Hz, time scale: ${this.timeScale.toFixed(3)}`);
+                    }
+                };
+                requestAnimationFrame(measureFPS);
             }
 
             update(currentTime) {
@@ -127,9 +147,9 @@
                 return this.gameTime;
             }
 
-            // ПРОСТАЯ функция для анимаций - БЕЗ ЗАМЕДЛЕНИЙ
+            // Функция для нормализации скорости под 60 FPS
             animate(speed) {
-                return speed; // Возвращаем скорость как есть!
+                return speed * this.timeScale;
             }
         }
 
@@ -168,24 +188,24 @@
         let isTouching = false;
         let lastTouchTime = 0;
 
-        // Облака с оптимальной скоростью
+        // Облака с одинаковой скоростью для всех устройств
         let clouds = [];
         for (let i = 0; i < 8; i++) {
-            const baseSpeed = isMobile() ? 0.5 : 0.8; // ПК немного быстрее мобильных
+            const baseSpeed = 0.5; // Одинаковая скорость для всех
             clouds.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * 150 + 20,
-                speed: baseSpeed + Math.random() * (isMobile() ? 0.6 : 1.0),
+                speed: baseSpeed + Math.random() * 0.6,
                 size: 1 + Math.random() * 2
             });
         }
 
-        // Солнце - быстрая скорость для всех устройств
+        // Солнце - одинаковая скорость для всех устройств
         const sun = {
             x: canvas.width - 60,
             y: 80,
             rayFrame: 0,
-            raySpeed: isMobile() ? 0.04 : 0.05 // Примерно одинаковая скорость
+            raySpeed: 0.04 // Одинаковая скорость для всех
         };
 
         // Поверхность земли
@@ -393,7 +413,7 @@
         }, { passive: false });
 
         function shoot() {
-            const baseSpeed = isMobile() ? 18 : 17; // ПК немного быстрее мобильных
+            const baseSpeed = 18; // Одинаковая скорость для всех устройств
             const bullet = {
                 x: turnip.x,
                 y: turnip.y - 20,
@@ -428,11 +448,11 @@
 
             const targetLeaf = availableLeaves[Math.floor(Math.random() * availableLeaves.length)];
 
-            const baseSpeed = isMobile() ? 2.2 : 2.4; // ПК немного быстрее мобильных
+            const baseSpeed = 2.2; // Одинаковая скорость для всех устройств
             const bird = {
                 x: Math.random() * canvas.width,
                 y: -30,
-                speed: baseSpeed + Math.random() * (isMobile() ? 1.2 : 1.4),
+                speed: baseSpeed + Math.random() * 1.2,
                 wingFrame: Math.random() * 20,
                 state: 'flying',
                 targetLeaf: targetLeaf,
@@ -475,19 +495,20 @@
             });
         }
 
-        // Создание птиц с оптимальной частотой
-        const birdSpawnInterval = isMobile() ? 500 : 450; // ПК спавнит птиц немного чаще
+        // Создание птиц с одинаковой частотой для всех устройств
+        const birdSpawnInterval = 500; // Одинаково для всех устройств
         setInterval(createBird, birdSpawnInterval);
 
         function update(currentTime) {
             timeManager.update(currentTime);
+            const animationSpeed = timeManager.animate(1);
             
             if (gameState.showStartButton) {
-                gameState.time++;
-                sun.rayFrame += sun.raySpeed;
+                gameState.time += animationSpeed;
+                sun.rayFrame += sun.raySpeed * animationSpeed;
 
                 clouds.forEach(cloud => {
-                    cloud.x += cloud.speed;
+                    cloud.x += cloud.speed * animationSpeed;
                     if (cloud.x > canvas.width + 40) {
                         cloud.x = -40;
                         cloud.y = Math.random() * 150 + 20;
@@ -496,7 +517,7 @@
 
                 gardenLeaves.forEach(leaf => {
                     if (leaf.exists) {
-                        leaf.windFrame += 0.05;
+                        leaf.windFrame += 0.05 * animationSpeed;
                     }
                 });
                 return;
@@ -504,22 +525,22 @@
 
             if (!gameState.gameRunning || gameState.isPaused) return;
 
-            gameState.time++;
-            sun.rayFrame += sun.raySpeed;
+            gameState.time += animationSpeed;
+            sun.rayFrame += sun.raySpeed * animationSpeed;
 
-            // Автоматическая стрельба с быстрой скоростью
+            // Автоматическая стрельба с одинаковой скоростью для всех устройств
             if (turnip.shootCooldown > 0) {
-                turnip.shootCooldown--;
+                turnip.shootCooldown -= animationSpeed;
             } else {
                 shoot();
-                // Быстрая стрельба для всех устройств
-                turnip.shootCooldown = isMobile() ? 8 : 7;
+                // Одинаковая скорость стрельбы для всех устройств
+                turnip.shootCooldown = 8;
             }
 
-            // Движение репы с быстрой скоростью
+            // Движение репы с одинаковой скоростью для всех устройств
             let moving = false;
-            const baseMoveSpeed = isMobile() ? 12 : 13; // ПК немного быстрее
-            const moveSpeed = baseMoveSpeed;
+            const baseMoveSpeed = 12; // Одинаково для всех устройств
+            const moveSpeed = baseMoveSpeed * animationSpeed;
 
             if (keys['a'] || keys['ф']) {
                 turnip.x -= moveSpeed;
@@ -545,10 +566,10 @@
                         turnip.direction = 1;
                     }
 
-                    // Быстрая скорость следования для всех устройств
-                    const baseFollowSpeed = isMobile() ? 0.6 : 0.65;
-                    const maxFollowSpeed = isMobile() ? 25 : 27;
-                    const speed = Math.min(Math.abs(difference) * baseFollowSpeed, maxFollowSpeed);
+                    // Одинаковая скорость следования для всех устройств
+                    const baseFollowSpeed = 0.6;
+                    const maxFollowSpeed = 25;
+                    const speed = Math.min(Math.abs(difference) * baseFollowSpeed, maxFollowSpeed) * animationSpeed;
                     turnip.x += Math.sign(difference) * speed;
                     moving = true;
                 }
@@ -557,7 +578,7 @@
             turnip.x = Math.max(30, Math.min(canvas.width - 30, turnip.x));
 
             if (moving) {
-                turnip.walkFrame += 0.3;
+                turnip.walkFrame += 0.3 * animationSpeed;
                 turnip.isWalking = true;
             } else {
                 turnip.isWalking = false;
@@ -566,7 +587,7 @@
             }
 
             clouds.forEach(cloud => {
-                cloud.x += cloud.speed;
+                cloud.x += cloud.speed * animationSpeed;
                 if (cloud.x > canvas.width + 40) {
                     cloud.x = -40;
                     cloud.y = Math.random() * 150 + 20;
@@ -575,16 +596,16 @@
 
             gardenLeaves.forEach(leaf => {
                 if (leaf.exists) {
-                    leaf.windFrame += 0.05;
+                    leaf.windFrame += 0.05 * animationSpeed;
                 }
             });
 
-            // Пули с оптимизированной скоростью
+            // Пули с нормализованной скоростью
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const bullet = bullets[i];
 
-                bullet.x += Math.cos(bullet.angle) * bullet.speed;
-                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+                bullet.x += Math.cos(bullet.angle) * bullet.speed * animationSpeed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed * animationSpeed;
 
                 if (bullet.x < 0 || bullet.x > canvas.width ||
                     bullet.y < 0 || bullet.y > canvas.height) {
@@ -592,10 +613,10 @@
                 }
             }
 
-            // Птицы с оптимизированной скоростью
+            // Птицы с нормализованной скоростью
             for (let i = birds.length - 1; i >= 0; i--) {
                 const bird = birds[i];
-                bird.wingFrame += 0.8;
+                bird.wingFrame += 0.8 * animationSpeed;
 
                 switch (bird.state) {
                     case 'flying':
@@ -604,15 +625,15 @@
                         const distance = Math.sqrt(dx * dx + dy * dy);
 
                         if (distance > 15) {
-                            bird.x += (dx / distance) * bird.speed;
-                            bird.y += (dy / distance) * bird.speed;
+                            bird.x += (dx / distance) * bird.speed * animationSpeed;
+                            bird.y += (dy / distance) * bird.speed * animationSpeed;
                         } else {
                             bird.state = 'landing';
                         }
                         break;
 
                     case 'landing':
-                        bird.landingProgress++;
+                        bird.landingProgress += animationSpeed;
                         if (bird.landingProgress > 30) {
                             bird.state = 'taking';
                             bird.landingProgress = 0;
@@ -620,7 +641,7 @@
                         break;
 
                     case 'taking':
-                        bird.landingProgress++;
+                        bird.landingProgress += animationSpeed;
                         if (bird.landingProgress > 10) {
                             holes.push({
                                 x: bird.targetLeaf.x,
@@ -637,8 +658,8 @@
                         break;
 
                     case 'escaping':
-                        const escapeSpeed = isMobile() ? 6 : 6.5; // Примерно одинаково для всех
-                        bird.y -= bird.speed * escapeSpeed;
+                        const escapeSpeed = 6; // Одинаково для всех устройств
+                        bird.y -= bird.speed * escapeSpeed * animationSpeed;
                         if (bird.y < -50) {
                             birds.splice(i, 1);
                             continue;
@@ -657,11 +678,11 @@
 
             for (let i = fallingLeaves.length - 1; i >= 0; i--) {
                 const leaf = fallingLeaves[i];
-                leaf.x += leaf.vx;
-                leaf.y += leaf.vy;
-                leaf.rotation += leaf.rotSpeed;
-                leaf.vy += 0.1;
-                leaf.life--;
+                leaf.x += leaf.vx * animationSpeed;
+                leaf.y += leaf.vy * animationSpeed;
+                leaf.rotation += leaf.rotSpeed * animationSpeed;
+                leaf.vy += 0.1 * animationSpeed;
+                leaf.life -= animationSpeed;
 
                 if (leaf.life <= 0 || leaf.y > canvas.height) {
                     fallingLeaves.splice(i, 1);
@@ -670,11 +691,11 @@
 
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vx *= 0.95;
-                p.vy *= 0.95;
-                p.life--;
+                p.x += p.vx * animationSpeed;
+                p.y += p.vy * animationSpeed;
+                p.vx *= Math.pow(0.95, animationSpeed);
+                p.vy *= Math.pow(0.95, animationSpeed);
+                p.life -= animationSpeed;
 
                 if (p.life <= 0) {
                     particles.splice(i, 1);
@@ -1008,7 +1029,7 @@
             ctx.fillStyle = '#696969';
             drawPixelRect(21, -34, 3, 18);
 
-            if (turnip.shootCooldown > (isMobile() ? 5 : 4)) {
+            if (turnip.shootCooldown > 5) {
                 ctx.fillStyle = '#FFD700';
                 drawPixelRect(18, -40, 9, 4);
             }

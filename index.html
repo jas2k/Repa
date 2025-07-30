@@ -32,19 +32,33 @@
             cursor: pointer;
         }
 
-        /* Для всех устройств - полноэкранное растянутое изображение */
+        /* Для всех устройств - правильные пропорции как на мобилке */
         #gameContainer {
             width: 100vw;
             height: 100vh;
             position: fixed;
             top: 0;
             left: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         #gameCanvas {
-            width: 100vw;
+            width: auto;
             height: 100vh;
-            object-fit: fill;
+            max-width: 50vh;
+            object-fit: contain;
             display: block;
+        }
+        
+        /* Для мобильных - полный экран */
+        @media (max-width: 768px) {
+            #gameCanvas {
+                width: 100vw;
+                height: 100vh;
+                max-width: none;
+                object-fit: fill;
+            }
         }
 
         #ui {

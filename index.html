@@ -22,19 +22,45 @@
         }
 
         #gameContainer {
+            border: 4px solid #4a4a4a;
+            border-radius: 8px;
             background: #1a1a1a;
             position: relative;
-            width: 100vw;
-            height: 100vh;
         }
 
         #gameCanvas {
             display: block;
             image-rendering: pixelated;
             cursor: pointer;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
+        }
+
+        /* Адаптивные размеры */
+        @media (orientation: landscape) {
+            /* Горизонтальная ориентация (компьютер/планшет) */
+            #gameContainer {
+                width: 80vw;
+                max-width: 800px;
+                height: 70vh;
+                max-height: 600px;
+            }
+            #gameCanvas {
+                width: 100%;
+                height: 100%;
+            }
+        }
+
+        @media (orientation: portrait) {
+            /* Вертикальная ориентация (телефон) */
+            #gameContainer {
+                width: 90vw;
+                max-width: 400px;
+                height: 80vh;
+                max-height: 700px;
+            }
+            #gameCanvas {
+                width: 100%;
+                height: 100%;
+            }
         }
 
         #ui {
@@ -52,7 +78,7 @@
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="400" height="700"></canvas>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div id="ui">
             <div>ЛИСТЬЯ: <span id="leaves">9</span></div>
             <div>СЧЕТ: <span id="score">0</span></div>
@@ -97,13 +123,13 @@
 
         // Солнце
         const sun = {
-            x: canvas.width - 60,
-            y: 60,
+            x: canvas.width - 80,
+            y: 80,
             rayFrame: 0
         };
 
         // Поверхность земли
-        const groundLevel = canvas.height - 90;
+        const groundLevel = canvas.height - 100;
 
         // Репа-киборг
         const turnip = {
@@ -159,19 +185,23 @@
 
         function handleClick(clickX, clickY) {
             if (gameState.showStartButton) {
-                if (clickX >= 100 && clickX <= 300 && clickY >= 400 && clickY <= 440) {
+                if (clickX >= canvas.width/2 - 100 && clickX <= canvas.width/2 + 100 && 
+                    clickY >= canvas.height/2 + 50 && clickY <= canvas.height/2 + 90) {
                     startNewGame();
                 }
             } else if (gameState.gameRunning && !gameState.isPaused) {
-                if (clickX >= 330 && clickX <= 395 && clickY >= 10 && clickY <= 35) {
+                if (clickX >= canvas.width - 80 && clickX <= canvas.width - 10 && 
+                    clickY >= 10 && clickY <= 35) {
                     gameState.isPaused = true;
                 }
             } else if (gameState.isPaused) {
-                if (clickX >= 120 && clickX <= 280 && clickY >= 350 && clickY <= 390) {
+                if (clickX >= canvas.width/2 - 80 && clickX <= canvas.width/2 + 80 && 
+                    clickY >= canvas.height/2 && clickY <= canvas.height/2 + 40) {
                     gameState.isPaused = false;
                 }
             } else if (!gameState.gameRunning && !gameState.showStartButton) {
-                if (clickX >= 140 && clickX <= 260 && clickY >= 500 && clickY <= 530) {
+                if (clickX >= canvas.width/2 - 60 && clickX <= canvas.width/2 + 60 && 
+                    clickY >= canvas.height/2 + 100 && clickY <= canvas.height/2 + 130) {
                     startNewGame();
                 }
             }
@@ -683,15 +713,15 @@
         }
 
         function drawPauseButton() {
-            drawPixelText('ПАУЗА', 330, 18, '#FFB347', 2);
+            drawPixelText('ПАУЗА', canvas.width - 75, 18, '#FFB347', 2);
         }
 
         function drawPauseScreen() {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            drawPixelText('ПАУЗА', 150, 200, '#FFB347', 3);
-            drawPixelText('ПРОДОЛЖИТЬ', 120, 360, '#FFB347', 2);
+            drawPixelText('ПАУЗА', canvas.width/2 - 50, canvas.height/2 - 100, '#FFB347', 3);
+            drawPixelText('ПРОДОЛЖИТЬ', canvas.width/2 - 80, canvas.height/2 + 10, '#FFB347', 2);
         }
 
         function drawSky() {
@@ -1088,8 +1118,8 @@
             drawUI();
 
             if (gameState.showStartButton) {
-                drawPixelText('НАЧАТЬ ИГРУ', 100, 410, '#FFB347', 2);
-                drawPixelText('КАСАНИЕ ДЛЯ ДВИЖЕНИЯ', 50, 450, '#00FF41', 1);
+                drawPixelText('НАЧАТЬ ИГРУ', canvas.width/2 - 100, canvas.height/2 + 60, '#FFB347', 2);
+                drawPixelText('КАСАНИЕ ДЛЯ ДВИЖЕНИЯ', canvas.width/2 - 140, canvas.height/2 + 100, '#00FF41', 1);
                 return;
             }
 
@@ -1105,9 +1135,9 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                drawPixelText('ОГОРОД РАЗГРАБЛЕН', 60, 320, '#FF0000', 2);
-                drawPixelText('СЧЕТ: ' + gameState.score, 140, 390, '#00FF41', 1);
-                drawPixelText('НАЧАТЬ СНОВА', 140, 510, '#FFB347', 1);
+                drawPixelText('ОГОРОД РАЗГРАБЛЕН', canvas.width/2 - 140, canvas.height/2 - 50, '#FF0000', 2);
+                drawPixelText('СЧЕТ: ' + gameState.score, canvas.width/2 - 50, canvas.height/2 + 20, '#00FF41', 1);
+                drawPixelText('НАЧАТЬ СНОВА', canvas.width/2 - 60, canvas.height/2 + 110, '#FFB347', 1);
             }
         }
 

@@ -45,21 +45,22 @@
             }
         }
 
+        /* Для ПК и планшетов - полный экран как на мобильных */
         @media (min-width: 769px) {
-    #gameContainer {
-        border: 4px solid #4a4a4a;
-        border-radius: 8px;
-        width: 100vw;
-        height: 100vh;
-        max-width: 600px;
-        max-height: 800px;
-    }
-    #gameCanvas {
-        width: 100%;
-        height: 100%;
-        object-fit: fill;
-    }
-}
+            #gameContainer {
+                border: 4px solid #4a4a4a;
+                border-radius: 8px;
+                width: 100vw;
+                height: 100vh;
+                max-width: 600px;
+                max-height: 800px;
+            }
+            #gameCanvas {
+                width: 100%;
+                height: 100%;
+                object-fit: fill;
+            }
+        }
 
         #ui {
             position: absolute;
@@ -90,10 +91,12 @@
 
         // Функция для определения типа устройства
         function isMobile() {
-            const GAME_SPEED_MULTIPLIER = 1.0; // Одинаковая скорость для всех устройств
             return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                    window.innerWidth <= 768;
         }
+
+        // Одинаковая скорость для всех устройств
+        const GAME_SPEED_MULTIPLIER = 1.0;
 
         // Функция вибрации для мобильных устройств
         function vibrate(duration = 50) {
@@ -348,7 +351,7 @@
             const bullet = {
                 x: turnip.x,
                 y: turnip.y - 20,
-                speed: 8,
+                speed: 8 * GAME_SPEED_MULTIPLIER,
                 angle: -Math.PI/2,
                 radius: 3,
                 trail: []
@@ -382,7 +385,7 @@
             const bird = {
                 x: Math.random() * canvas.width,
                 y: -30,
-                speed: 1 + Math.random(),
+                speed: (1 + Math.random()) * GAME_SPEED_MULTIPLIER,
                 wingFrame: Math.random() * 20,
                 state: 'flying',
                 targetLeaf: targetLeaf,
@@ -460,7 +463,7 @@
             } else {
                 shoot();
                 // Одинаковая скорость стрельбы для всех устройств
-                turnip.shootCooldown = 25;
+                turnip.shootCooldown = Math.floor(25 / GAME_SPEED_MULTIPLIER);
             }
 
             // Движение репы с одинаковой скоростью на всех устройствах
@@ -527,8 +530,8 @@
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const bullet = bullets[i];
 
-                bullet.x += Math.cos(bullet.angle) * (bullet.speed * GAME_SPEED_MULTIPLIER);
-                bullet.y += Math.sin(bullet.angle) * (bullet.speed * GAME_SPEED_MULTIPLIER);
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
 
                 if (bullet.x < 0 || bullet.x > canvas.width ||
                     bullet.y < 0 || bullet.y > canvas.height) {

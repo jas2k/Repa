@@ -96,8 +96,10 @@
                 this.timeScale = 1;
                 this.gameTime = 0;
                 this.refreshRate = 60;
+                this.isDetecting = true;
+                this.detectionComplete = false;
                 
-                // Определяем частоту обновления экрана
+                // Немедленно начинаем определение частоты
                 this.detectRefreshRate();
             }
 
@@ -109,7 +111,7 @@
                     frameTimestamps.push(timestamp);
                     frameCount++;
                     
-                    if (frameCount < 120) {
+                    if (frameCount < 60) { // Быстрее определяем - за 60 кадров вместо 120
                         requestAnimationFrame(measureFPS);
                     } else {
                         // Вычисляем среднюю частоту кадров
@@ -121,6 +123,8 @@
                         
                         // Адаптация под частоту экрана - нормализация к 60 FPS
                         this.timeScale = 60 / this.refreshRate;
+                        this.detectionComplete = true;
+                        this.isDetecting = false;
                         
                         console.log(`Detected: ${this.refreshRate}Hz, time scale: ${this.timeScale.toFixed(3)}`);
                     }
@@ -149,6 +153,10 @@
 
             // Функция для нормализации скорости под 60 FPS
             animate(speed) {
+                // Если еще определяем частоту - используем стандартную скорость
+                if (this.isDetecting || !this.detectionComplete) {
+                    return speed * (60 / 60); // = speed * 1.0
+                }
                 return speed * this.timeScale;
             }
         }

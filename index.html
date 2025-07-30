@@ -95,6 +95,8 @@
                 this.targetFrameTime = 1000 / this.targetFPS;
                 this.timeScale = 1;
                 this.gameTime = 0;
+                this.isPC = !isMobile();
+                this.refreshRate = 60;
                 
                 // Определяем частоту обновления экрана
                 this.detectRefreshRate();
@@ -103,28 +105,54 @@
             detectRefreshRate() {
                 let frameCount = 0;
                 let startTime = performance.now();
+                let frameTimestamps = [];
                 
-                const measureFPS = () => {
+                const measureFPS = (timestamp) => {
+                    frameTimestamps.push(timestamp);
                     frameCount++;
-                    if (frameCount < 120) {
+                    
+                    if (frameCount < 150) {
                         requestAnimationFrame(measureFPS);
                     } else {
-                        const endTime = performance.now();
-                        const measuredFPS = (frameCount * 1000) / (endTime - startTime);
+                        // Вычисляем среднюю частоту кадров более точно
+                        const totalTime = frameTimestamps[frameTimestamps.length - 1] - frameTimestamps[0];
+                        const avgFrameTime = totalTime / (frameTimestamps.length - 1);
+                        const measuredFPS = 1000 / avgFrameTime;
                         
-                        // Адаптируем скорость игры под частоту экрана
-                        if (measuredFPS > 90) {
-                            // 120Hz+ экраны
-                            this.timeScale = 60 / measuredFPS;
-                        } else if (measuredFPS > 75) {
-                            // 90Hz экраны  
-                            this.timeScale = 60 / measuredFPS;
+                        this.refreshRate = Math.round(measuredFPS);
+                        
+                        // Универсальная формула для любой частоты обновления
+                        // Базовая скорость для ПК увеличена в 2 раза
+                        const baseSpeedMultiplier = this.isPC ? 2.0 : 1.0;
+                        
+                        // Адаптация под любую частоту экрана
+                        if (this.refreshRate >= 240) {
+                            // 240Hz+ (игровые мониторы)
+                            this.timeScale = (60 / this.refreshRate) * baseSpeedMultiplier;
+                        } else if (this.refreshRate >= 165) {
+                            // 165-239Hz (высокочастотные мониторы)
+                            this.timeScale = (60 / this.refreshRate) * baseSpeedMultiplier;
+                        } else if (this.refreshRate >= 144) {
+                            // 144-164Hz (игровые мониторы)
+                            this.timeScale = (60 / this.refreshRate) * baseSpeedMultiplier;
+                        } else if (this.refreshRate >= 120) {
+                            // 120-143Hz (высокочастотные экраны)
+                            this.timeScale = (60 / this.refreshRate) * baseSpeedMultiplier;
+                        } else if (this.refreshRate >= 90) {
+                            // 90-119Hz (мобильные флагманы)
+                            this.timeScale = (60 / this.refreshRate) * baseSpeedMultiplier;
+                        } else if (this.refreshRate >= 75) {
+                            // 75-89Hz (средние мониторы)
+                            this.timeScale = (60 / this.refreshRate) * baseSpeedMultiplier;
+                        } else if (this.refreshRate >= 48) {
+                            // 48-74Hz (стандартные экраны)
+                            this.timeScale = (60 / this.refreshRate) * baseSpeedMultiplier;
                         } else {
-                            // 60Hz и ниже
-                            this.timeScale = 1;
+                            // Очень низкие частоты (30-47Hz)
+                            this.timeScale = (60 / Math.max(this.refreshRate, 30)) * baseSpeedMultiplier;
                         }
                         
-                        console.log(`Detected refresh rate: ${measuredFPS.toFixed(1)}Hz, time scale: ${this.timeScale.toFixed(3)}`);
+                        console.log(`Detected: ${this.refreshRate}Hz ${this.isPC ? 'PC' : 'Mobile'}, speed multiplier: ${baseSpeedMultiplier}x, time scale: ${this.timeScale.toFixed(3)}`);
                     }
                 };
                 requestAnimationFrame(measureFPS);
@@ -190,23 +218,24 @@
         let isTouching = false;
         let lastTouchTime = 0;
 
-        // Облака
+        // Облака с увеличенной скоростью для ПК
         let clouds = [];
         for (let i = 0; i < 8; i++) {
+            const baseSpeed = isMobile() ? 0.3 : 0.6; // ПК в 2 раза быстрее
             clouds.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * 150 + 20,
-                speed: 0.3 + Math.random() * 0.4, // Увеличена базовая скорость
+                speed: baseSpeed + Math.random() * (isMobile() ? 0.4 : 0.8),
                 size: 1 + Math.random() * 2
             });
         }
 
-        // Солнце - одинаковая скорость для всех устройств
+        // Солнце - одинаковая быстрая скорость для всех устройств
         const sun = {
             x: canvas.width - 60,
             y: 80,
             rayFrame: 0,
-            raySpeed: 0.02 // Фиксированная скорость анимации лучей
+            raySpeed: isMobile() ? 0.025 : 0.04 // ПК быстрее
         };
 
         // Поверхность земли
@@ -414,10 +443,11 @@
         }, { passive: false });
 
         function shoot() {
+            const baseSpeed = isMobile() ? 12 : 18; // ПК стреляет быстрее
             const bullet = {
                 x: turnip.x,
                 y: turnip.y - 20,
-                speed: 12, // Увеличена скорость пуль
+                speed: baseSpeed,
                 angle: -Math.PI/2,
                 radius: 3,
                 trail: []
@@ -448,10 +478,11 @@
 
             const targetLeaf = availableLeaves[Math.floor(Math.random() * availableLeaves.length)];
 
+            const baseSpeed = isMobile() ? 1.5 : 2.2; // ПК птицы быстрее
             const bird = {
                 x: Math.random() * canvas.width,
                 y: -30,
-                speed: 1.5 + Math.random() * 0.8, // Увеличена скорость птиц
+                speed: baseSpeed + Math.random() * (isMobile() ? 0.8 : 1.2),
                 wingFrame: Math.random() * 20,
                 state: 'flying',
                 targetLeaf: targetLeaf,
@@ -495,7 +526,8 @@
         }
 
         // Создание птиц с оптимизированной частотой
-        setInterval(createBird, 700);
+        const birdSpawnInterval = isMobile() ? 700 : 500; // ПК спавнит птиц чаще
+        setInterval(createBird, birdSpawnInterval);
 
         function update(currentTime) {
             timeManager.update(currentTime);
@@ -532,12 +564,14 @@
                 turnip.shootCooldown -= animationSpeed;
             } else {
                 shoot();
-                turnip.shootCooldown = 12; // Быстрая стрельба
+                // ПК стреляет чаще
+                turnip.shootCooldown = isMobile() ? 12 : 8;
             }
 
             // Движение репы с оптимизированной скоростью
             let moving = false;
-            const moveSpeed = 8 * animationSpeed;
+            const baseMoveSpeed = isMobile() ? 8 : 12; // ПК движется быстрее
+            const moveSpeed = baseMoveSpeed * animationSpeed;
 
             if (keys['a'] || keys['ф']) {
                 turnip.x -= moveSpeed;
@@ -563,7 +597,10 @@
                         turnip.direction = 1;
                     }
 
-                    const speed = Math.min(Math.abs(difference) * 0.4, 18) * animationSpeed;
+                    // Очень быстрая скорость следования для ПК
+                    const baseFollowSpeed = isMobile() ? 0.4 : 0.6;
+                    const maxFollowSpeed = isMobile() ? 18 : 28;
+                    const speed = Math.min(Math.abs(difference) * baseFollowSpeed, maxFollowSpeed) * animationSpeed;
                     turnip.x += Math.sign(difference) * speed;
                     moving = true;
                 }
@@ -652,7 +689,8 @@
                         break;
 
                     case 'escaping':
-                        bird.y -= bird.speed * 4 * animationSpeed;
+                        const escapeSpeed = isMobile() ? 4 : 6; // ПК птицы улетают быстрее
+                        bird.y -= bird.speed * escapeSpeed * animationSpeed;
                         if (bird.y < -50) {
                             birds.splice(i, 1);
                             continue;

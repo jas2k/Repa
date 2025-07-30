@@ -168,24 +168,24 @@
         let isTouching = false;
         let lastTouchTime = 0;
 
-        // Облака с сильно увеличенной скоростью для ПК
+        // Облака с оптимальной скоростью
         let clouds = [];
         for (let i = 0; i < 8; i++) {
-            const baseSpeed = isMobile() ? 0.3 : 1.2; // ПК в 4 раза быстрее
+            const baseSpeed = isMobile() ? 0.5 : 0.8; // ПК немного быстрее мобильных
             clouds.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * 150 + 20,
-                speed: baseSpeed + Math.random() * (isMobile() ? 0.4 : 1.6),
+                speed: baseSpeed + Math.random() * (isMobile() ? 0.6 : 1.0),
                 size: 1 + Math.random() * 2
             });
         }
 
-        // Солнце - сильно увеличенная скорость для ПК
+        // Солнце - быстрая скорость для всех устройств
         const sun = {
             x: canvas.width - 60,
             y: 80,
             rayFrame: 0,
-            raySpeed: isMobile() ? 0.025 : 0.08 // ПК в 3+ раза быстрее
+            raySpeed: isMobile() ? 0.04 : 0.05 // Примерно одинаковая скорость
         };
 
         // Поверхность земли
@@ -393,7 +393,7 @@
         }, { passive: false });
 
         function shoot() {
-            const baseSpeed = isMobile() ? 12 : 25; // ПК стреляет намного быстрее
+            const baseSpeed = isMobile() ? 18 : 17; // ПК немного быстрее мобильных
             const bullet = {
                 x: turnip.x,
                 y: turnip.y - 20,
@@ -428,11 +428,11 @@
 
             const targetLeaf = availableLeaves[Math.floor(Math.random() * availableLeaves.length)];
 
-            const baseSpeed = isMobile() ? 1.5 : 3.5; // ПК птицы намного быстрее
+            const baseSpeed = isMobile() ? 2.2 : 2.4; // ПК немного быстрее мобильных
             const bird = {
                 x: Math.random() * canvas.width,
                 y: -30,
-                speed: baseSpeed + Math.random() * (isMobile() ? 0.8 : 2.0),
+                speed: baseSpeed + Math.random() * (isMobile() ? 1.2 : 1.4),
                 wingFrame: Math.random() * 20,
                 state: 'flying',
                 targetLeaf: targetLeaf,
@@ -475,8 +475,8 @@
             });
         }
 
-        // Создание птиц с частым спавном для ПК
-        const birdSpawnInterval = isMobile() ? 700 : 300; // ПК спавнит птиц гораздо чаще
+        // Создание птиц с оптимальной частотой
+        const birdSpawnInterval = isMobile() ? 500 : 450; // ПК спавнит птиц немного чаще
         setInterval(createBird, birdSpawnInterval);
 
         function update(currentTime) {
@@ -507,18 +507,18 @@
             gameState.time++;
             sun.rayFrame += sun.raySpeed;
 
-            // Автоматическая стрельба с высокой скоростью для ПК
+            // Автоматическая стрельба с быстрой скоростью
             if (turnip.shootCooldown > 0) {
                 turnip.shootCooldown--;
             } else {
                 shoot();
-                // ПК стреляет намного чаще
-                turnip.shootCooldown = isMobile() ? 12 : 4;
+                // Быстрая стрельба для всех устройств
+                turnip.shootCooldown = isMobile() ? 8 : 7;
             }
 
-            // Движение репы с высокой скоростью для ПК
+            // Движение репы с быстрой скоростью
             let moving = false;
-            const baseMoveSpeed = isMobile() ? 8 : 20; // ПК движется в 2.5 раза быстрее
+            const baseMoveSpeed = isMobile() ? 12 : 13; // ПК немного быстрее
             const moveSpeed = baseMoveSpeed;
 
             if (keys['a'] || keys['ф']) {
@@ -545,9 +545,9 @@
                         turnip.direction = 1;
                     }
 
-                    // Очень быстрая скорость следования для ПК
-                    const baseFollowSpeed = isMobile() ? 0.4 : 0.8;
-                    const maxFollowSpeed = isMobile() ? 18 : 40;
+                    // Быстрая скорость следования для всех устройств
+                    const baseFollowSpeed = isMobile() ? 0.6 : 0.65;
+                    const maxFollowSpeed = isMobile() ? 25 : 27;
                     const speed = Math.min(Math.abs(difference) * baseFollowSpeed, maxFollowSpeed);
                     turnip.x += Math.sign(difference) * speed;
                     moving = true;
@@ -637,7 +637,7 @@
                         break;
 
                     case 'escaping':
-                        const escapeSpeed = isMobile() ? 4 : 8; // ПК птицы улетают в 2 раза быстрее
+                        const escapeSpeed = isMobile() ? 6 : 6.5; // Примерно одинаково для всех
                         bird.y -= bird.speed * escapeSpeed;
                         if (bird.y < -50) {
                             birds.splice(i, 1);
@@ -1008,7 +1008,7 @@
             ctx.fillStyle = '#696969';
             drawPixelRect(21, -34, 3, 18);
 
-            if (turnip.shootCooldown > (isMobile() ? 8 : 2)) {
+            if (turnip.shootCooldown > (isMobile() ? 5 : 4)) {
                 ctx.fillStyle = '#FFD700';
                 drawPixelRect(18, -40, 9, 4);
             }

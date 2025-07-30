@@ -48,14 +48,13 @@
         /* Для ПК - сохраняем пропорции как на телефоне */
         @media (min-width: 769px) {
             #gameContainer {
-                width: 50vh;
-                height: 100vh;
-                max-width: 400px;
+                width: 400px;
+                height: 600px;
             }
             #gameCanvas {
                 width: 100%;
                 height: 100%;
-                object-fit: contain;
+                object-fit: fill;
             }
         }
 
@@ -74,7 +73,7 @@
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="400" height="800"></canvas>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
         <div id="ui">
             <div>ЛИСТЬЯ: <span id="leaves">9</span></div>
             <div>СЧЕТ: <span id="score">0</span></div>
@@ -139,7 +138,7 @@
         };
 
         // Поверхность земли
-        const groundLevel = canvas.height - 120;
+        const groundLevel = canvas.height - 80;
 
         // Репа-киборг
         const turnip = {

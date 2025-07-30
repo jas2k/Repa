@@ -45,17 +45,17 @@
             }
         }
 
-        /* Для ПК - суженое по вертикали */
+        /* Для ПК - сохраняем пропорции как на телефоне */
         @media (min-width: 769px) {
             #gameContainer {
-                width: 100vw;
-                height: 70vh;
-                max-height: 600px;
+                width: 50vh;
+                height: 100vh;
+                max-width: 400px;
             }
             #gameCanvas {
                 width: 100%;
                 height: 100%;
-                object-fit: fill;
+                object-fit: contain;
             }
         }
 

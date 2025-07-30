@@ -49,7 +49,7 @@
         @media (min-width: 769px) {
             #gameContainer {
                 width: 450px;
-                height: 600px;
+                height: 550px;
             }
             #gameCanvas {
                 width: 100%;
@@ -73,7 +73,7 @@
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="450" height="600"></canvas>
+        <canvas id="gameCanvas" width="450" height="550"></canvas>
         <div id="ui">
             <div>ЛИСТЬЯ: <span id="leaves">9</span></div>
             <div>СЧЕТ: <span id="score">0</span></div>
@@ -194,7 +194,7 @@
 
         function handleClick(clickX, clickY) {
             if (gameState.showStartButton) {
-                if (clickX >= 125 && clickX <= 325 && clickY >= 400 && clickY <= 440) {
+                if (clickX >= 125 && clickX <= 325 && clickY >= 350 && clickY <= 390) {
                     startNewGame();
                 }
             } else if (gameState.gameRunning && !gameState.isPaused) {
@@ -202,11 +202,11 @@
                     gameState.isPaused = true;
                 }
             } else if (gameState.isPaused) {
-                if (clickX >= 145 && clickX <= 305 && clickY >= 300 && clickY <= 340) {
+                if (clickX >= 145 && clickX <= 305 && clickY >= 250 && clickY <= 290) {
                     gameState.isPaused = false;
                 }
             } else if (!gameState.gameRunning && !gameState.showStartButton) {
-                if (clickX >= 165 && clickX <= 285 && clickY >= 480 && clickY <= 510) {
+                if (clickX >= 165 && clickX <= 285 && clickY >= 430 && clickY <= 460) {
                     startNewGame();
                 }
             }
@@ -737,8 +737,8 @@
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            drawPixelText('ПАУЗА', 175, 250, '#FFB347', 3);
-            drawPixelText('ПРОДОЛЖИТЬ', 145, 310, '#FFB347', 2);
+            drawPixelText('ПАУЗА', 175, 200, '#FFB347', 3);
+            drawPixelText('ПРОДОЛЖИТЬ', 145, 260, '#FFB347', 2);
         }
 
         function drawSky() {
@@ -1135,8 +1135,8 @@
             drawUI();
 
             if (gameState.showStartButton) {
-                drawPixelText('НАЧАТЬ ИГРУ', 125, 410, '#FFB347', 2);
-                drawPixelText('КАСАНИЕ ДЛЯ ДВИЖЕНИЯ', 75, 450, '#00FF41', 1);
+                drawPixelText('НАЧАТЬ ИГРУ', 125, 360, '#FFB347', 2);
+                drawPixelText('КАСАНИЕ ДЛЯ ДВИЖЕНИЯ', 75, 400, '#00FF41', 1);
                 return;
             }
 
@@ -1152,9 +1152,9 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                drawPixelText('ОГОРОД РАЗГРАБЛЕН', 85, 350, '#FF0000', 2);
-                drawPixelText('СЧЕТ: ' + gameState.score, 165, 420, '#00FF41', 1);
-                drawPixelText('НАЧАТЬ СНОВА', 165, 490, '#FFB347', 1);
+                drawPixelText('ОГОРОД РАЗГРАБЛЕН', 85, 300, '#FF0000', 2);
+                drawPixelText('СЧЕТ: ' + gameState.score, 165, 370, '#00FF41', 1);
+                drawPixelText('НАЧАТЬ СНОВА', 165, 440, '#FFB347', 1);
             }
         }
 
